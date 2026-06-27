@@ -1,0 +1,38 @@
+# Environments
+sst_env/
+.env
+.venv/
+
+# Data (large files, not tracked)
+data/raw/
+data/manifests/
+data/derived/
+data/previews/
+papers
+docs
+
+# Models (downloaded weights)
+models/
+
+# Run outputs
+runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.so
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

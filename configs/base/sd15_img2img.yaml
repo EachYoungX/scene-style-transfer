@@ -1,0 +1,16 @@
+model_id: runwayml/stable-diffusion-v1-5
+revision: fp16
+torch_dtype: float16
+variant: fp16
+
+pipeline:
+  class: diffusers.StableDiffusionImg2ImgPipeline
+  safety_checker: null
+  requires_safety_checker: false
+
+defaults:
+  num_inference_steps: 50
+  guidance_scale: 7.5
+  strength: 0.75
+  seed: 42
+  negative_prompt: "low quality, blurry, distorted, text, watermark"
