@@ -1,0 +1,9 @@
+case_id,scene_group,scene_type,content,style,prompt
+rigid_A_water_lake,A,natural_landscape,data/raw/photo_ref/photo_water_lake_and_boat.jpg,data/raw/monet/monet_pond_water_lilies_1907.jpg,"a lake with boat and open water, preserve horizon and water surface, painterly atmosphere"
+rigid_A_sea_coast,A,water_coast,data/raw/photo_ref/photo_sea_coast.jpg,data/raw/hokusai/hokusai_great_wave_1831.jpg,"a sea coast landscape with preserved horizon and shoreline, linear wave-inspired painterly style"
+rigid_B_forest,B,vegetation,data/raw/photo_ref/photo_forest_trees.jpg,data/raw/klimt/klimt_birch_forest_1903.jpg,"a forest scene with preserved tree trunks and depth, decorative painterly texture"
+rigid_B_mountain_lake,B,natural_landscape,data/raw/photo_ref/photo_landscape_mountains_with_lake.jpg,data/raw/van_gogh/van_gogh_mountains_saint_remy_1889.jpg,"a mountain lake landscape, preserved shoreline and distant peaks, painterly atmosphere"
+rigid_C_garden_path,C,vegetation,data/raw/photo_ref/photo_garden_flowers.jpg,data/raw/monet/monet_garden_giverny_1900.jpg,"a garden path with flowers and vegetation, preserve path corridor and depth, impressionist painterly color"
+rigid_C_snow_street,C,city_architecture,data/raw/photo_ref/photo_snow_winter.jpg,data/raw/monet/monet_snow_argenteuil_1875.jpg,"a snowy street scene, preserve road corridor and building layout, soft impressionist winter color"
+rigid_D_basilica,D,city_architecture,data/raw/photo_ref/photo_architecture_basilica.jpg,data/raw/monet/monet_rouen_cathedral_1894.jpg,"a basilica facade with preserved towers and arches, impressionist cathedral painting, soft atmospheric color, visible painterly brushwork"
+rigid_D_church,D,city_architecture,data/raw/photo_ref/photo_architecture_church_above_clouds.jpg,data/raw/van_gogh/van_gogh_church_auvers_1890.jpg,"a church architecture scene, preserve roof geometry and facade layout, postimpressionist painterly texture"

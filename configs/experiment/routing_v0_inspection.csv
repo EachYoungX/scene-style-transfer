@@ -1,0 +1,5 @@
+run_name,case_id,status,observation,next_action
+debug_v0_adjusted,debug_forest,acceptable,"Highest risk now tracks ground/path/near-field boundary; path bottom is bright orange and path gradient diffuses from center. Main trunks and path-side boundaries are medium-low; vanishing point is medium risk.","Keep heuristic for V0; later add explicit path/line structure if needed."
+debug_v0_adjusted,debug_mountain_lake,acceptable,"Strong edges and layout boundaries are higher risk; lake water, mountains, sky, and continuous forest are low risk.","Keep heuristic for V0; avoid over-penalizing dense foreground edges."
+debug_v0_adjusted,debug_city_architecture,needs_subregion_split,"Risk should not be class-level. Building outlines/key geometry should be high risk, flat material medium, shadows and low-texture interiors medium-low.","Move future architecture routing from class prior to contour/material subregion logic."
+debug_v0_adjusted,debug_sea_coast,acceptable,"Risk distribution is relatively normal because spatial relationships are less ambiguous.","Keep for V0; revisit after stronger sea/coast style sweep."

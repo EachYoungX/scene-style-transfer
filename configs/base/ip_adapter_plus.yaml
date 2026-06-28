@@ -1,0 +1,25 @@
+model_id: runwayml/stable-diffusion-v1-5
+revision: fp16
+torch_dtype: float16
+variant: fp16
+
+ip_adapter:
+  model_id: h94/IP-Adapter
+  subfolder: models
+  weight_name: ip-adapter-plus_sd15.safetensors
+  scale: 0.7
+
+controlnet_id: lllyasviel/control_v11p_sd15_canny
+controlnet_scale: 0.8
+
+pipeline:
+  class: diffusers.StableDiffusionControlNetImg2ImgPipeline
+  safety_checker: null
+  requires_safety_checker: false
+
+defaults:
+  num_inference_steps: 20
+  guidance_scale: 6.0
+  strength: 0.65
+  seed: 42
+  negative_prompt: "low quality, blurry, distorted, text, watermark"

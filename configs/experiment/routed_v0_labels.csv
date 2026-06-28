@@ -1,0 +1,5 @@
+run_name,case_id,variant,subjective_result,next_decision
+city_forest_routed_20,debug_city_architecture,default,"Between balanced and strong_style; clearer than strong_style but style too weak.","Too conservative; try push variant."
+city_forest_routed_20,debug_forest,default,"Nearly indistinguishable from strong_style.","Too small a difference; try push variant."
+city_forest_routed_push_20,debug_city_architecture,push,"Almost indistinguishable from strong_style.","Global-parameter approximation saturated; move to spatial intervention."
+city_forest_routed_push_20,debug_forest,push,"Slightly closer to reference tone, but overall difference remains very weak.","Global-parameter approximation saturated; move to spatial intervention."

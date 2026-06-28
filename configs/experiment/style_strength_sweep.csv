@@ -1,0 +1,5 @@
+sweep_id,strength,controlnet_scale,ip_adapter_scale,guidance_scale,prompt_suffix
+balanced,0.55,0.75,0.70,6.5,"visible reference style, painterly texture"
+strong_style,0.70,0.55,1.00,6.0,"strong reference painting style, visible brushwork, atmospheric color"
+max_style_weak_structure,0.80,0.35,1.20,5.5,"strong stylization, reference painting palette, painterly surface texture"
+style_only_pressure,0.85,0.00,1.20,5.0,"strong reference style, painterly color and brush texture"

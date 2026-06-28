@@ -1,0 +1,9 @@
+run_name,case_id,sweep_id,style_similarity_subjective,structure_similarity_subjective,main_failures,notes
+city_forest_strength_20,debug_city_architecture,balanced,30,90,F1|F4,"Some brushwork; weak style; shadows and carved details lose fidelity."
+city_forest_strength_20,debug_city_architecture,strong_style,60,82,F1|F3,"Clear style transfer; building remains broadly close to original; details distort."
+city_forest_strength_20,debug_city_architecture,max_style_weak_structure,80,70,F1|F3|F5,"Strong brushwork; rounded dome drifts toward Gothic pointed roof; stronger reference architectural prior."
+city_forest_strength_20,debug_city_architecture,style_only_pressure,90,40,F1|F2|F3|F5,"Warm palette follows reference; orientation flips toward reference; structure becomes hybrid generation."
+city_forest_strength_20,debug_forest,balanced,25,88,F4,"Weak brushwork; dark content tone preserved; leaf texture change is subtle."
+city_forest_strength_20,debug_forest,strong_style,45,78,F4,"More vivid and closer to reference color; still dark and content-dominant."
+city_forest_strength_20,debug_forest,max_style_weak_structure,65,62,F2|F3|F5,"Brighter; color-block feeling appears; horizontal trunk texture begins; path starts to be occluded."
+city_forest_strength_20,debug_forest,style_only_pressure,75,35,F2|F3|F5,"Path disappears; irregular dense forest and moss-like tree bases appear; image becomes regeneration-like."

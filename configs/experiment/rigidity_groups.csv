@@ -1,0 +1,5 @@
+group_id,rigidity_level,scene_family,examples,expected_twopass_behavior,method_implication
+A,low,sky_water_cloud,"sky|water|cloud|fog|mist","often blendable; errors are mostly appearance-level","soft style routing is acceptable"
+B,medium_low,vegetation_landscape,"forest|grass|foliage|mountain|leaf litter","can recover local readability if geometry remains compatible","soft risk mask and feathering may help"
+C,medium_high,road_bridge_street,"road|bridge|street|path corridor|shore boundary","unstable; boundary drift and perspective damage may appear","requires stronger structure lock and possibly latent-level control"
+D,high,architecture_landmark,"building|facade|church|dome|arch|window|tower","RGB blending often creates double boundaries or invalid hybrid geometry","requires generation-time geometry protection"

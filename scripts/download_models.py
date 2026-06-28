@@ -40,6 +40,15 @@ MODELS = {
             "models/ip-adapter_sd15.safetensors",
         ],
     },
+    "ip_adapter_plus": {
+        "repo_id": "h94/IP-Adapter",
+        "note": "SD1.5 Plus weights for patch-token reference conditioning.",
+        "allow_patterns": [
+            "models/image_encoder/config.json",
+            "models/image_encoder/model.safetensors",
+            "models/ip-adapter-plus_sd15.safetensors",
+        ],
+    },
 }
 
 
