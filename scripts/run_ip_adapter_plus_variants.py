@@ -13,7 +13,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.append(str(Path(__file__).resolve().parents[1] / "scripts"))
 from run_baseline import fit_square, make_canny  # noqa: E402
@@ -21,7 +21,7 @@ from run_baseline import fit_square, make_canny  # noqa: E402
 from diffusers import ControlNetModel, DDIMScheduler, StableDiffusionControlNetImg2ImgPipeline
 
 
-VARIANTS = ("raw", "pooled", "layout_suppressed", "shuffled")
+VARIANTS = ("raw", "pooled", "layout_suppressed", "shuffled", "texture_bank", "global_plus_texture")
 
 
 def read_cases(path: Path) -> list[dict[str, str]]:
@@ -29,13 +29,34 @@ def read_cases(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def transform_embeds(embeds: list[torch.Tensor], variant: str, seed: int) -> list[torch.Tensor]:
+def fit_square_crop(image_path: Path, size: int) -> Image.Image:
+    image = Image.open(image_path).convert("RGB")
+    side = min(image.width, image.height)
+    left = (image.width - side) // 2
+    top = (image.height - side) // 2
+    image = image.crop((left, top, left + side, top + side))
+    return image.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def transform_embeds(
+    embeds: list[torch.Tensor],
+    variant: str,
+    seed: int,
+    texture_embeds: list[torch.Tensor] | None = None,
+    texture_residual_scale: float = 0.35,
+) -> list[torch.Tensor]:
     if variant == "raw":
         return [embed.clone() for embed in embeds]
+    if variant == "texture_bank":
+        if texture_embeds is None:
+            raise ValueError("texture_bank variant requires texture_embeds.")
+        return [embed.clone() for embed in texture_embeds]
 
     output = []
     generator = torch.Generator(device=embeds[0].device).manual_seed(seed)
-    for embed in embeds:
+    if variant == "global_plus_texture" and texture_embeds is None:
+        raise ValueError("global_plus_texture variant requires texture_embeds.")
+    for index, embed in enumerate(embeds):
         transformed = embed.clone()
         if embed.ndim != 4:
             raise ValueError(f"Expected IP-Adapter Plus 4D embeds, got shape {tuple(embed.shape)}")
@@ -51,10 +72,43 @@ def transform_embeds(embeds: list[torch.Tensor], variant: str, seed: int) -> lis
         elif variant == "shuffled":
             perm = torch.randperm(patches.shape[2], generator=generator, device=patches.device)
             transformed[:, :, 1:, :] = patches[:, :, perm, :]
+        elif variant == "global_plus_texture":
+            texture = texture_embeds[index]
+            if texture.shape != embed.shape:
+                raise ValueError(f"Texture embed shape {tuple(texture.shape)} does not match {tuple(embed.shape)}")
+            texture_patches = texture[:, :, 1:, :]
+            source_mean = patches.mean(dim=2, keepdim=True)
+            texture_mean = texture_patches.mean(dim=2, keepdim=True)
+            transformed[:, :, 0:1, :] = embed[:, :, 0:1, :]
+            transformed[:, :, 1:, :] = source_mean + texture_residual_scale * (texture_patches - texture_mean)
         else:
             raise ValueError(f"Unknown variant: {variant}")
         output.append(transformed)
     return output
+
+
+def make_texture_bank_image(style: Image.Image, size: int, patch_sizes: list[int], seed: int) -> Image.Image:
+    rng = np.random.default_rng(seed)
+    source = style.resize((size, size), Image.Resampling.LANCZOS).convert("RGB")
+    source_np = np.asarray(source).astype(np.float32)
+    canvas = np.zeros((size, size, 3), dtype=np.float32)
+    tile = max(16, min(patch_sizes))
+
+    for y in range(0, size, tile):
+        for x in range(0, size, tile):
+            patch_size = int(rng.choice(patch_sizes))
+            sx = int(rng.integers(0, max(1, size - patch_size + 1)))
+            sy = int(rng.integers(0, max(1, size - patch_size + 1)))
+            crop = source_np[sy : sy + patch_size, sx : sx + patch_size]
+            crop = Image.fromarray(crop.astype(np.uint8), mode="RGB").resize((tile, tile), Image.Resampling.BICUBIC)
+            tile_np = np.asarray(crop).astype(np.float32)
+            y1 = min(y + tile, size)
+            x1 = min(x + tile, size)
+            canvas[y:y1, x:x1] = tile_np[: y1 - y, : x1 - x]
+
+    image = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), mode="RGB")
+    bank = np.asarray(image.filter(ImageFilter.GaussianBlur(radius=0.35)))
+    return Image.fromarray(np.clip(bank, 0, 255).astype(np.uint8), mode="RGB")
 
 
 def load_pipe(project_root: Path, args: argparse.Namespace):
@@ -124,11 +178,16 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
 
     pipe = load_pipe(project_root, args)
     content = fit_square(project_root / case["content"], args.size)
-    style = fit_square(project_root / case["style"], args.size)
+    style = fit_square_crop(project_root / case["style"], args.size)
     control = make_canny(content)
     content.save(out_dir / "content.png")
     style.save(out_dir / "style.png")
     control.save(out_dir / "canny.png")
+    texture_style = None
+    texture_embeds = None
+    if any(variant in {"texture_bank", "global_plus_texture"} for variant in args.variants):
+        texture_style = make_texture_bank_image(style, args.size, args.texture_patch_sizes, args.seed)
+        texture_style.save(out_dir / "texture_bank_style.png")
 
     base_embeds = pipe.prepare_ip_adapter_image_embeds(
         ip_adapter_image=style,
@@ -137,10 +196,24 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
         num_images_per_prompt=1,
         do_classifier_free_guidance=True,
     )
+    if texture_style is not None:
+        texture_embeds = pipe.prepare_ip_adapter_image_embeds(
+            ip_adapter_image=texture_style,
+            ip_adapter_image_embeds=None,
+            device="cuda",
+            num_images_per_prompt=1,
+            do_classifier_free_guidance=True,
+        )
 
     index = []
     for variant in args.variants:
-        embeds = transform_embeds(base_embeds, variant, args.seed)
+        embeds = transform_embeds(
+            base_embeds,
+            variant,
+            args.seed,
+            texture_embeds=texture_embeds,
+            texture_residual_scale=args.texture_residual_scale,
+        )
         torch.cuda.reset_peak_memory_stats()
         start = time.time()
         image = pipe(
@@ -184,6 +257,8 @@ def main() -> None:
     parser.add_argument("--ip-adapter-scale", type=float, default=0.9)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--size", type=int, default=512)
+    parser.add_argument("--texture-patch-sizes", nargs="+", type=int, default=[32, 64, 96])
+    parser.add_argument("--texture-residual-scale", type=float, default=0.35)
     parser.add_argument("--negative-prompt", default="low quality, blurry, distorted, text, watermark, copied objects")
     parser.add_argument("--model-dir", default="models/sd15")
     parser.add_argument("--controlnet-dir", default="models/controlnet_canny")
