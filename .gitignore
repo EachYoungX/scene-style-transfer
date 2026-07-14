@@ -10,6 +10,7 @@ data/derived/
 data/previews/
 papers
 docs
+archives
 
 # Models (downloaded weights)
 models/
