@@ -13,20 +13,27 @@ from pathlib import Path
 import torch
 from PIL import Image, ImageDraw, ImageFont
 
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.append(str(Path(__file__).resolve().parents[1] / "scripts"))
+from diagnostics.injection_schedule import (  # noqa: E402
+    build_processor_map,
+    build_variant_schedule,
+    legacy_base_layer_scales,
+    legacy_layer_group,
+    legacy_time_multiplier,
+    parse_processor_name,
+    processor_block_weights,
+    SUPPORTED_VARIANTS,
+)
+from diagnostics.ip_adapter_instrumentation import (  # noqa: E402
+    ResidualLogger,
+    instrument_ip_adapter_processors,
+)
 from run_baseline import fit_square, make_canny  # noqa: E402
 from run_ip_adapter_plus_variants import fit_square_crop, load_pipe  # noqa: E402
 
 
-VARIANTS = (
-    "A0_raw_all",
-    "A1_lowres_only",
-    "A2_highres_only",
-    "A3_highres_plus_weak_mid",
-    "T1_late_style",
-    "T2_gradual_style",
-    "T3_late_highres",
-)
+VARIANTS = SUPPORTED_VARIANTS
 
 
 def read_cases(path: Path) -> list[dict[str, str]]:
@@ -35,44 +42,15 @@ def read_cases(path: Path) -> list[dict[str, str]]:
 
 
 def layer_group(processor_name: str) -> str:
-    if processor_name.startswith("down_blocks"):
-        return "down"
-    if processor_name.startswith("mid_block"):
-        return "mid"
-    if processor_name.startswith("up_blocks"):
-        return "up"
-    return "other"
+    return legacy_layer_group(processor_name)
 
 
 def base_layer_scales(variant: str, base_scale: float) -> dict[str, float]:
-    if variant in {"A0_raw_all", "T1_late_style", "T2_gradual_style"}:
-        return {"down": base_scale, "mid": base_scale, "up": base_scale}
-    if variant == "A1_lowres_only":
-        return {"down": base_scale, "mid": base_scale, "up": 0.0}
-    if variant == "A2_highres_only":
-        return {"down": 0.0, "mid": 0.0, "up": base_scale}
-    if variant in {"A3_highres_plus_weak_mid", "T3_late_highres"}:
-        return {"down": 0.0, "mid": base_scale * 0.25, "up": base_scale}
-    raise ValueError(f"Unknown variant: {variant}")
+    return legacy_base_layer_scales(variant, base_scale)
 
 
 def time_multiplier(variant: str, step_index: int, num_steps: int) -> float:
-    progress = (step_index + 1) / max(num_steps, 1)
-    if variant == "T1_late_style":
-        return 0.0 if progress <= 0.4 else 1.0
-    if variant == "T2_gradual_style":
-        if progress <= 0.4:
-            return 0.15
-        if progress <= 0.7:
-            return 0.45
-        return 1.0
-    if variant == "T3_late_highres":
-        if progress <= 0.4:
-            return 0.0
-        if progress <= 0.7:
-            return 0.45
-        return 1.0
-    return 1.0
+    return legacy_time_multiplier(variant, step_index, num_steps)
 
 
 def set_ip_adapter_scales(pipe, layer_scales: dict[str, float], multiplier: float = 1.0) -> dict[str, float]:
@@ -82,6 +60,18 @@ def set_ip_adapter_scales(pipe, layer_scales: dict[str, float], multiplier: floa
             continue
         group = layer_group(name)
         scale = layer_scales.get(group, 0.0) * multiplier
+        processor.scale = [scale for _ in processor.scale] if isinstance(processor.scale, list) else scale
+        applied[name] = scale
+    return applied
+
+
+def set_ip_adapter_schedule_step(pipe, schedule, step_index: int) -> dict[str, float]:
+    applied: dict[str, float] = {}
+    for name, processor in pipe.unet.attn_processors.items():
+        if not hasattr(processor, "scale"):
+            continue
+        info = parse_processor_name(name, processor)
+        scale = schedule.scale_for(info.block, step_index) if info.block != "other" else 0.0
         processor.scale = [scale for _ in processor.scale] if isinstance(processor.scale, list) else scale
         applied[name] = scale
     return applied
@@ -127,6 +117,10 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
     out_dir.mkdir(parents=True)
 
     pipe = load_pipe(project_root, args)
+    residual_logger = ResidualLogger() if args.log_residuals else None
+    instrumented_processors = []
+    if residual_logger is not None:
+        instrumented_processors = instrument_ip_adapter_processors(pipe, residual_logger)
     content = fit_square(project_root / case["content"], args.size)
     style = fit_square_crop(project_root / case["style"], args.size)
     control = make_canny(content)
@@ -141,15 +135,36 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
         num_images_per_prompt=1,
         do_classifier_free_guidance=True,
     )
+    processor_map = [info.to_dict() for info in build_processor_map(pipe.unet.attn_processors)]
+    block_weights = processor_block_weights(build_processor_map(pipe.unet.attn_processors))
+    (out_dir / "processor_map.json").write_text(json.dumps(processor_map, indent=2), encoding="utf-8")
+    (out_dir / "block_weights.json").write_text(json.dumps(block_weights, indent=2), encoding="utf-8")
+    if instrumented_processors:
+        (out_dir / "instrumented_processors.json").write_text(
+            json.dumps(instrumented_processors, indent=2),
+            encoding="utf-8",
+        )
 
     index = []
     for variant in args.variants:
-        layer_scales = base_layer_scales(variant, args.ip_adapter_scale)
-        set_ip_adapter_scales(pipe, layer_scales, 1.0)
+        if residual_logger is not None:
+            residual_logger.clear()
+        schedule = build_variant_schedule(
+            variant,
+            args.ip_adapter_scale,
+            args.num_inference_steps,
+            block_weights,
+            residual_energy_scale_factor=args.residual_energy_scale_factor,
+        )
+        set_ip_adapter_schedule_step(pipe, schedule, 0)
+        if residual_logger is not None:
+            residual_logger.set_step(0, None)
 
         def callback(pipe_ref, step_index, timestep, callback_kwargs):
-            multiplier = time_multiplier(variant, step_index, args.num_inference_steps)
-            set_ip_adapter_scales(pipe_ref, layer_scales, multiplier)
+            next_step = min(step_index + 1, args.num_inference_steps - 1)
+            if residual_logger is not None:
+                residual_logger.set_step(next_step, _scalar_timestep(timestep))
+            set_ip_adapter_schedule_step(pipe_ref, schedule, next_step)
             return callback_kwargs
 
         torch.cuda.reset_peak_memory_stats()
@@ -168,10 +183,18 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
             callback_on_step_end=callback,
         ).images[0]
         image.save(out_dir / f"{variant}.png")
+        if residual_logger is not None:
+            residual_path = out_dir / f"{variant}_residuals.jsonl"
+            with residual_path.open("w", encoding="utf-8") as f:
+                for record in residual_logger.to_dicts():
+                    f.write(json.dumps(record) + "\n")
         index.append(
             {
                 "variant": variant,
-                "layer_scales": layer_scales,
+                "layer_scales": _legacy_layer_scales_or_empty(variant, args.ip_adapter_scale),
+                "schedule": schedule.to_dict(),
+                "scale_area": schedule.scale_area(block_weights),
+                "residual_records": len(residual_logger.records) if residual_logger is not None else 0,
                 "elapsed_sec": round(time.time() - start, 4),
                 "peak_allocated_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 4),
             }
@@ -181,6 +204,19 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
     (out_dir / "index.json").write_text(json.dumps(index, indent=2), encoding="utf-8")
     make_grid(out_dir, list(args.variants))
     print(out_dir / "injection_grid.png")
+
+
+def _scalar_timestep(timestep):
+    if hasattr(timestep, "item"):
+        return timestep.item()
+    return timestep
+
+
+def _legacy_layer_scales_or_empty(variant: str, base_scale: float) -> dict[str, float]:
+    try:
+        return base_layer_scales(variant, base_scale)
+    except ValueError:
+        return {}
 
 
 def main() -> None:
@@ -194,6 +230,7 @@ def main() -> None:
     parser.add_argument("--guidance-scale", type=float, default=5.8)
     parser.add_argument("--controlnet-scale", type=float, default=0.72)
     parser.add_argument("--ip-adapter-scale", type=float, default=0.9)
+    parser.add_argument("--residual-energy-scale-factor", type=float)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--size", type=int, default=512)
     parser.add_argument("--negative-prompt", default="low quality, blurry, distorted, text, watermark, copied objects")
@@ -201,6 +238,7 @@ def main() -> None:
     parser.add_argument("--controlnet-dir", default="models/controlnet_canny")
     parser.add_argument("--ip-adapter-dir", default="models/ip_adapter_plus")
     parser.add_argument("--weight-name", default="ip-adapter-plus_sd15.safetensors")
+    parser.add_argument("--log-residuals", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
