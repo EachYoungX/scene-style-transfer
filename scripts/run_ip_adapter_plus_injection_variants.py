@@ -156,21 +156,27 @@ def run_case(case: dict[str, str], project_root: Path, args: argparse.Namespace)
             block_weights,
             residual_energy_scale_factor=args.residual_energy_scale_factor,
         )
+        # Diffusers 0.35.2 exposes step-end callbacks only. Set the scheduler
+        # timetable up front so the first residual and every following step
+        # receive the timestep used by the processor that produced them.
+        pipe.scheduler.set_timesteps(args.num_inference_steps, device="cuda")
+        scheduler_timesteps = list(pipe.scheduler.timesteps)
         set_ip_adapter_schedule_step(pipe, schedule, 0)
         if residual_logger is not None:
-            residual_logger.set_step(0, None)
+            residual_logger.set_step(0, _scalar_timestep(scheduler_timesteps[0]))
 
         def callback(pipe_ref, step_index, timestep, callback_kwargs):
             next_step = min(step_index + 1, args.num_inference_steps - 1)
+            next_timestep = scheduler_timesteps[next_step]
             if residual_logger is not None:
-                residual_logger.set_step(next_step, _scalar_timestep(timestep))
+                residual_logger.set_step(next_step, _scalar_timestep(next_timestep))
             set_ip_adapter_schedule_step(pipe_ref, schedule, next_step)
             return callback_kwargs
 
         torch.cuda.reset_peak_memory_stats()
         start = time.time()
         image = pipe(
-            prompt=f"{case['prompt']}, strong reference style, preserve content layout",
+            prompt=case["prompt"],
             negative_prompt=args.negative_prompt,
             image=content,
             control_image=control,
