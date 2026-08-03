@@ -9,7 +9,7 @@ manifest: configs/experiment/v1_5_cases.csv
 pairs:
   - v1_5_demuth_church
   - v1_5_demuth_wave
-  - v1_5_kulhanek_snow_street
+  - v1_5_kulhanek_snow_winter
 
 baselines:
   - id: P_MASK_HIGHNORM_X1
