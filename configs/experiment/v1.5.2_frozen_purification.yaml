@@ -1,0 +1,38 @@
+experiment:
+  name: v1.5.2_frozen_purification
+  run_name: v1_5_2_frozen_purification_multiseed
+  num_inference_steps: 30
+  seeds: [123, 777]
+
+manifest: configs/experiment/v1_5_cases.csv
+
+pairs:
+  - v1_5_demuth_church
+  - v1_5_demuth_wave
+  - v1_5_kulhanek_snow_street
+
+baselines:
+  - id: P_MASK_HIGHNORM_X1
+    method: mask_highnorm
+    layer_path: A2_highres_only
+    strength_multiplier: 1.0
+    drop_ratio: 0.5
+
+  - id: P_SVD_FIXED_X1
+    method: svd_fixed
+    layer_path: A2_highres_only
+    strength_multiplier: 1.0
+    retain_ratio: 0.7
+    tail_beta: 0.25
+
+fixed_parameters:
+  prompt_source: manifest
+  append_prompt: false
+  scheduler: current_locked_scheduler
+  controlnet_scale: 0.72
+  img2img_strength: 0.76
+  guidance_scale: 5.8
+  ip_adapter_base_scale: 0.9
+  diffusers: "0.35.2"
+  transformers: "4.57.1"
+  torch: "2.5.1"
