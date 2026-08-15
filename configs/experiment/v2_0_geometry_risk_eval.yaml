@@ -1,0 +1,29 @@
+experiment:
+  name: v2_0_geometry_risk_validation
+  risk_version: R0_geometry_risk
+  image_size: 512
+  manifest: configs/experiment/v2_0_geometry_risk_cases.csv
+  output_root: data/derived/v2_0_geometry_risk
+
+risk_map:
+  implementation: src/preprocess/structure_risk.py
+  fixed_thresholds: [0.30, 0.50, 0.70]
+  top_fractions: [0.20, 0.35, 0.50]
+
+annotations:
+  mask_threshold: 0.50
+  uncertainty_threshold: 0.01
+  interpolation:
+    binary_mask: nearest
+    continuous_risk: bilinear
+
+evaluation:
+  primary_metric: auprc
+  empty_set_policy:
+    undefined_ratio: nan
+    both_empty_iou: 1.0
+  engineering_gates:
+    failure_coverage_min: 0.60
+    soft_fpr_max: 0.35
+    require_positive_risk_separation: true
+    require_auprc_above_prevalence: true
