@@ -60,6 +60,18 @@ def join_panels(panels: list[Image.Image], gutter: int = 8) -> Image.Image:
     return canvas
 
 
+def save_contact_sheet(images: list[Image.Image], path: Path) -> None:
+    thumbnails = [image.resize((image.width // 2, image.height // 2), Image.Resampling.LANCZOS) for image in images]
+    width = max(image.width for image in thumbnails)
+    height = sum(image.height for image in thumbnails) + 8 * (len(thumbnails) - 1)
+    contact = Image.new("RGB", (width, height), (20, 20, 20))
+    y = 0
+    for image in thumbnails:
+        contact.paste(image, (0, y))
+        y += image.height + 8
+    contact.save(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/experiment/v2_0_geometry_risk_eval.yaml")
@@ -73,11 +85,20 @@ def main() -> None:
     preview_root.mkdir(parents=True, exist_ok=True)
 
     previews: list[Image.Image] = []
+    blind_previews: list[Image.Image] = []
     for row in rows:
         sample_id = row["sample_id"]
         content = load_rgb(ROOT / row["content_copy"])
         output = load_rgb(ROOT / row["a2_output_copy"])
         risk = load_continuous_risk(ROOT / row["risk_path"])
+        blind = join_panels(
+            [
+                labeled_panel(content, "content"),
+                labeled_panel(output, "A2 output"),
+            ]
+        )
+        blind.save(preview_root / f"{sample_id}_blind.png")
+        blind_previews.append(blind)
         panels = [
             labeled_panel(content, "content"),
             labeled_panel(output, "A2 output"),
@@ -96,16 +117,11 @@ def main() -> None:
             )
         preview = join_panels(panels)
         preview.save(preview_root / f"{sample_id}.png")
-        previews.append(preview.resize((preview.width // 2, preview.height // 2), Image.Resampling.LANCZOS))
+        previews.append(preview)
         print(f"[OK] {sample_id}")
 
-    contact_width = max(image.width for image in previews)
-    contact = Image.new("RGB", (contact_width, sum(image.height for image in previews) + 8 * (len(previews) - 1)), (20, 20, 20))
-    y = 0
-    for image in previews:
-        contact.paste(image, (0, y))
-        y += image.height + 8
-    contact.save(preview_root / "all_samples_contact_sheet.png")
+    save_contact_sheet(blind_previews, preview_root / "all_samples_blind_annotation_sheet.png")
+    save_contact_sheet(previews, preview_root / "all_samples_diagnostic_sheet.png")
 
 
 if __name__ == "__main__":
