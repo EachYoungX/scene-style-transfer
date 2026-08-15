@@ -1,9 +1,9 @@
 """Run baseline diffusion style-transfer pipelines.
 
 Examples:
-  python scripts/run_baseline.py --method img2img --content data/raw/photo_ref/photo_landscape_mountains_with_lake.jpg
-  python scripts/run_baseline.py --method controlnet_canny --content data/raw/photo_ref/photo_dim_city_building.jpg
-  python scripts/run_baseline.py --method ip_adapter_canny --content data/raw/photo_ref/photo_dim_city_building.jpg --style data/raw/monet/monet_rouen_cathedral_1894.jpg
+  python scripts/run_baseline.py --method img2img --content data/raw/_photo_ref/photo_landscape_mountains_with_lake.jpg
+  python scripts/run_baseline.py --method controlnet_canny --content data/raw/_photo_ref/photo_dim_city_building.jpg
+  python scripts/run_baseline.py --method ip_adapter_canny --content data/raw/_photo_ref/photo_dim_city_building.jpg --style data/raw/monet/monet_rouen_cathedral_1894.jpg
 """
 
 from __future__ import annotations

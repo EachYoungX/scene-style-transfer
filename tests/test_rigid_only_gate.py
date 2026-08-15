@@ -34,6 +34,17 @@ def test_empty_rigid_gate_is_identity():
     assert torch.equal(gated, ip_delta)
 
 
+def test_thin_rigid_pixel_is_preserved_when_grid_is_coarsened():
+    gate = torch.ones(8, 8)
+    gate[3, 3] = 0.0
+    ip_delta = torch.ones(1, 4, 1)
+
+    gated = _processor(gate)._apply_spatial_gate(ip_delta, input_ndim=3)
+
+    assert gated[0, 0, 0] == 0.0
+    assert gated[0, 1:, 0].eq(1.0).all()
+
+
 def test_non_square_flattened_grid_fails_closed():
     processor = _processor(torch.ones(4, 4))
     ip_delta = torch.ones(1, 15, 2)

@@ -85,6 +85,11 @@ def aligned_content_path(project_root: Path, case: dict[str, str]) -> Path:
     return raw if raw.exists() else aligned
 
 
+def frozen_control_path(project_root: Path, case: dict[str, str]) -> Path | None:
+    path = project_root / Path(case["output_path"]).parent / "canny.png"
+    return path if path.exists() else None
+
+
 def run_case(
     case: dict[str, str],
     project_root: Path,
@@ -100,7 +105,8 @@ def run_case(
 
     content = fit_square(aligned_content_path(project_root, case), args.size)
     style = fit_square_crop(project_root / case["style_path"], args.size)
-    control = make_canny(content)
+    control_path = frozen_control_path(project_root, case)
+    control = Image.open(control_path).convert("RGB") if control_path else make_canny(content)
     content.save(out_dir / "content.png")
     style.save(out_dir / "style.png")
     control.save(out_dir / "canny.png")
@@ -185,7 +191,9 @@ def run_case(
     metadata = {
         "case": case,
         "experiment": "v2_0_rigid_only",
-        "spatial_interpolation": "nearest",
+        "spatial_interpolation": "minimum_pool",
+        "spatial_gate_downsampling": "minimum_pool_preserve_thin_rigid",
+        "control_source": str(control_path.relative_to(project_root)) if control_path else "generated_from_aligned_content",
         "gate_scope": "IP-Adapter image residual only",
         "index": index,
     }

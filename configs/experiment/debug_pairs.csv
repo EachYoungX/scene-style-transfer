@@ -1,5 +1,5 @@
 case_id,scene_type,content,style,prompt
-debug_city_architecture,city_architecture,data/raw/photo_ref/photo_architecture_basilica.jpg,data/raw/monet/monet_rouen_cathedral_1894.jpg,"a basilica facade with preserved towers and arches, impressionist cathedral painting, soft atmospheric color, visible painterly brushwork"
-debug_mountain_lake,natural_landscape,data/raw/photo_ref/photo_landscape_mountains_with_lake.jpg,data/raw/van_gogh/van_gogh_mountains_saint_remy_1889.jpg,"a mountain lake landscape, preserved shoreline and distant peaks, painterly atmosphere"
-debug_forest,vegetation,data/raw/photo_ref/photo_forest_trees.jpg,data/raw/klimt/klimt_birch_forest_1903.jpg,"a forest scene with preserved tree trunks and depth, decorative painterly texture"
-debug_sea_coast,water_coast,data/raw/photo_ref/photo_sea_coast.jpg,data/raw/hokusai/hokusai_great_wave_1831.jpg,"a sea coast landscape with preserved horizon and shoreline, linear wave-inspired painterly style"
+debug_city_architecture,city_architecture,data/raw/_photo_ref/photo_architecture_basilica.jpg,data/raw/monet/monet_rouen_cathedral_1894.jpg,"a basilica facade with preserved towers and arches, impressionist cathedral painting, soft atmospheric color, visible painterly brushwork"
+debug_mountain_lake,natural_landscape,data/raw/_photo_ref/photo_landscape_mountains_with_lake.jpg,data/raw/van_gogh/van_gogh_mountains_saint_remy_1889.jpg,"a mountain lake landscape, preserved shoreline and distant peaks, painterly atmosphere"
+debug_forest,vegetation,data/raw/_photo_ref/photo_forest_trees.jpg,data/raw/klimt/klimt_birch_forest_1903.jpg,"a forest scene with preserved tree trunks and depth, decorative painterly texture"
+debug_sea_coast,water_coast,data/raw/_photo_ref/photo_sea_coast.jpg,data/raw/hokusai/hokusai_great_wave_1831.jpg,"a sea coast landscape with preserved horizon and shoreline, linear wave-inspired painterly style"

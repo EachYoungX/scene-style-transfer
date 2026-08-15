@@ -5,7 +5,7 @@ This document is a practical index for collaborators. It explains the image grou
 ## Current Dataset Layout
 
 - Style references: `data/raw/<artist>/`
-- Content photos: `data/raw/photo_ref/`
+- Content photos: `data/raw/_photo_ref/`
 - Clean Artvee style manifest: `data/manifests/clean_artvee_style_refs.csv`
 - Clean baseline experiment manifest: `configs/experiment/clean_artvee_baseline_pairs.csv`
 - Current active results: `runs/ip_adapter_plus_injection/v1_layer_time_kulhanek_demuth_12step/`
@@ -206,45 +206,45 @@ These are the main content images used to evaluate structure preservation and co
 
 ### Core V1 Content Set
 
-- `data/raw/photo_ref/photo_lecreusois_church.jpg`
+- `data/raw/_photo_ref/photo_lecreusois_church.jpg`
   - Case role: `G1_church`.
   - Tests high-rigidity architecture.
   - Watch: roof geometry, facade layout, arches, skyline, false towers/building fragments.
 
-- `data/raw/photo_ref/photo_sea_wave.jpg`
+- `data/raw/_photo_ref/photo_sea_wave.jpg`
   - Case role: `G2_opposite_wave`.
   - Tests wave direction and water-motion preservation.
   - Watch: wave direction flips, false mountains, foreign shore/boat objects, copied wave geometry.
 
-- `data/raw/photo_ref/photo_flower_bed.jpg`
+- `data/raw/_photo_ref/photo_flower_bed.jpg`
   - Case role: `G3_flower_bed`.
   - Tests vegetation layout without a path.
   - Watch: false paths, tree trunks, garden corridors, flower bed splitting.
 
-- `data/raw/photo_ref/photo_seregei_city.jpg`
+- `data/raw/_photo_ref/photo_seregei_city.jpg`
   - Case role: `G4_city_mismatch`.
   - Tests city perspective and high-rigidity urban structure.
   - Watch: road/viewpoint tilt, extra building silhouettes, skyline drift.
 
 ### Additional Compatibility / Rigidity Content
 
-- `data/raw/photo_ref/photo_water_lake_and_boat.jpg`
+- `data/raw/_photo_ref/photo_water_lake_and_boat.jpg`
   - Tests low-rigidity water/horizon scenes.
   - Usually more tolerant of style injection.
 
-- `data/raw/photo_ref/photo_forest_trees.jpg`
+- `data/raw/_photo_ref/photo_forest_trees.jpg`
   - Tests forest trunks, path/depth corridor, and high texture density.
   - Watch: path disappearance, tree species replacement, trunk reordering.
 
-- `data/raw/photo_ref/photo_sea_coast.jpg`
+- `data/raw/_photo_ref/photo_sea_coast.jpg`
   - Tests low compatibility with wave references and cliff preservation.
   - Watch: cliff replaced by waves, shoreline/topology loss, arbitrary color drift.
 
-- `data/raw/photo_ref/photo_architecture_basilica.jpg`
+- `data/raw/_photo_ref/photo_architecture_basilica.jpg`
   - Tests rigid architecture, towers, facade, and arches.
   - Watch: double boundaries, hybrid roof/tower structures, facade collapse.
 
-- `data/raw/photo_ref/photo_snow_winter.jpg`
+- `data/raw/_photo_ref/photo_snow_winter.jpg`
   - Tests street corridor and winter atmosphere.
   - Watch: road boundary drift and false building/path structure.
 

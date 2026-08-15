@@ -28,9 +28,9 @@ def row(case_id: str, content_path: str, seed: str = "42") -> dict[str, str]:
 
 
 def test_annotation_source_names_are_stable():
-    assert content_name(row("v1_5_demuth_church", "data/raw/photo_ref/photo_lecreusois_church.jpg")) == "photo_church.png"
-    assert content_name(row("v1_5_demuth_wave", "data/raw/photo_ref/photo_sea_wave.jpg")) == "photo_wave.png"
-    assert content_name(row("v1_5_kulhanek_snow_winter", "data/raw/photo_ref/photo_snow_winter.jpg")) == "photo_snow_winter.png"
+    assert content_name(row("v1_5_demuth_church", "data/raw/_photo_ref/photo_lecreusois_church.jpg")) == "photo_church.png"
+    assert content_name(row("v1_5_demuth_wave", "data/raw/_photo_ref/photo_sea_wave.jpg")) == "photo_wave.png"
+    assert content_name(row("v1_5_kulhanek_snow_winter", "data/raw/_photo_ref/photo_snow_winter.jpg")) == "photo_snow_winter.png"
     assert a2_name(row("v1_5_demuth_church", "unused", "123")) == "demuth_church_seed123.png"
 
 

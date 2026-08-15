@@ -311,10 +311,13 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             gate = gate.unsqueeze(0)
         if gate.ndim != 4 or gate.shape[0] != 1 or gate.shape[1] != 1:
             raise ValueError("spatial_gate must have shape [H, W], [1, H, W], or [1, 1, H, W].")
-        gate = F.interpolate(
-            gate.to(device=ip_delta.device, dtype=ip_delta.dtype),
-            size=(height, width),
-            mode="nearest",
+        # Rigid GT is intentionally a 1–2 px line at 512px. Ordinary nearest
+        # sampling can miss such a line completely on 64/32/16/8 token grids.
+        # Minimum pooling preserves a lower retain ratio if any source pixel in
+        # the corresponding token cell is rigid, without changing the saved GT.
+        gate = -F.adaptive_max_pool2d(
+            -gate.to(device=ip_delta.device, dtype=ip_delta.dtype),
+            output_size=(height, width),
         ).reshape(1, height * width, 1)
         if gate.shape[1] != ip_delta.shape[1]:
             raise ValueError(

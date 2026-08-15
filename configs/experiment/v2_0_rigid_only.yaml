@@ -26,4 +26,4 @@ fixed_parameters:
   guidance_scale: 5.8
   controlnet_scale: 0.72
   ip_adapter_scale: 0.9
-  spatial_interpolation: nearest
+  spatial_interpolation: minimum_pool_preserve_thin_rigid
