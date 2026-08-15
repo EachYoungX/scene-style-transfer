@@ -38,8 +38,12 @@ def mask_rgb(mask: np.ndarray) -> np.ndarray:
     return np.repeat(gray[..., None], 3, axis=2)
 
 
-def comparison_overlay(risk: np.ndarray, failure: np.ndarray, soft: np.ndarray, cutoff: float) -> np.ndarray:
-    high = risk >= cutoff
+def comparison_overlay(
+    risk: np.ndarray, failure: np.ndarray, soft: np.ndarray, valid: np.ndarray, cutoff: float
+) -> np.ndarray:
+    high = (risk >= cutoff) & valid
+    failure = failure & valid
+    soft = soft & valid
     canvas = np.full((*risk.shape, 3), 28, dtype=np.uint8)
     canvas[soft] = (0, 150, 70)  # green: soft region
     canvas[high & ~failure] = (255, 210, 0)  # yellow: predicted only
@@ -90,6 +94,7 @@ def main() -> None:
         content = load_rgb(ROOT / row["content_source"])
         output = load_rgb(ROOT / row["a2_output_source"])
         risk = load_continuous_risk(ROOT / row["risk_path"])
+        valid_eval = load_binary_mask(ROOT / row["valid_eval_mask"])
         blind = join_panels(
             [
                 labeled_panel(content, "content"),
@@ -101,7 +106,7 @@ def main() -> None:
         panels = [
             labeled_panel(content, "content"),
             labeled_panel(output, "A2 output"),
-            labeled_panel(risk_heatmap(risk), "continuous risk"),
+            labeled_panel(risk_heatmap(np.where(valid_eval, risk, 0.0)), "risk (valid eval only)"),
         ]
         failure_path = ROOT / row["geometry_failure_mask"]
         soft_path = ROOT / row["soft_stylization_mask"]
@@ -115,7 +120,10 @@ def main() -> None:
             panels.extend(
                 [
                     labeled_panel(mask_rgb(failure), "failure mask"),
-                    labeled_panel(comparison_overlay(risk, failure, soft, args.overlay_threshold), "risk/failure overlay"),
+                    labeled_panel(
+                        comparison_overlay(risk, failure, soft, valid_eval, args.overlay_threshold),
+                        "risk/failure overlay",
+                    ),
                 ]
             )
         preview = join_panels(panels)

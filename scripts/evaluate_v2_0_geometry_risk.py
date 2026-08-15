@@ -55,6 +55,7 @@ def main() -> None:
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     experiment = config["experiment"]
     risk_config = config["risk_map"]
+    tolerance_radius = int(config["annotations"]["rigid_structure"]["spatial_tolerance_radius_px"])
     output_root = ROOT / experiment["output_root"]
     rows = read_manifest(ROOT / experiment["annotation_manifest"])
     result_root = output_root / "evaluation"
@@ -79,6 +80,7 @@ def main() -> None:
             ROOT / row["rigid_structure_mask"],
             ROOT / row["geometry_failure_mask"],
             ROOT / row["soft_stylization_mask"],
+            ROOT / row["valid_eval_mask"],
         ]
         if not all(path.exists() for path in required):
             missing.append(row["sample_id"])
@@ -89,10 +91,17 @@ def main() -> None:
         soft = load_binary_mask(required[3])
         uncertainty_path = ROOT / row["uncertainty_mask"]
         uncertainty = load_binary_mask(uncertainty_path)
+        valid_eval = load_binary_mask(required[4])
         validate_alignment(
-            row["sample_id"], risk=risk, rigid=rigid, failure=failure, soft=soft, uncertainty=uncertainty
+            row["sample_id"],
+            risk=risk,
+            rigid=rigid,
+            failure=failure,
+            soft=soft,
+            uncertainty=uncertainty,
+            valid_eval=valid_eval,
         )
-        valid = ~uncertainty
+        valid = valid_eval & ~uncertainty
         continuous = continuous_risk_metrics(risk, failure, valid)
         continuous_rows.append(
             {
@@ -112,7 +121,9 @@ def main() -> None:
             selected, cutoff = top_fraction_risk(risk, float(fraction), valid)
             selections.append((f"top_{round(float(fraction) * 100):02d}pct", selected, cutoff))
         for label, prediction, cutoff in selections:
-            metrics = binary_risk_metrics(prediction, failure, soft, rigid, valid)
+            metrics = binary_risk_metrics(
+                prediction, failure, soft, rigid, valid, tolerance_radius=tolerance_radius
+            )
             threshold_rows.append(
                 {
                     "sample_id": row["sample_id"],
@@ -141,7 +152,16 @@ def main() -> None:
     for row in threshold_rows:
         grouped[(str(row["case_id"]), str(row["threshold_label"]))].append(row)
     pair_rows: list[dict[str, object]] = []
-    metric_names = ("failure_coverage", "risk_precision", "failure_iou", "soft_fpr", "rigid_recall")
+    metric_names = (
+        "failure_coverage",
+        "failure_coverage_tolerant",
+        "risk_precision",
+        "risk_precision_tolerant",
+        "failure_iou",
+        "soft_fpr",
+        "rigid_recall",
+        "rigid_recall_tolerant",
+    )
     for (case_id, label), group in sorted(grouped.items()):
         pair_rows.append(
             {

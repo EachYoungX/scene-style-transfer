@@ -46,20 +46,54 @@ def rigid_centerline_candidate(canny: np.ndarray, lsd: np.ndarray) -> np.ndarray
     return np.where((canny > 0) | (lsd > 0), 255, 0).astype(np.uint8)
 
 
-def dilate_centerline(centerline: np.ndarray, radius: int = 4) -> np.ndarray:
-    require_binary_uint8(centerline, "rigid centerline")
+def dilate_binary(mask: np.ndarray, radius: int) -> np.ndarray:
+    require_binary_uint8(mask, "binary mask")
     if radius < 0:
         raise ValueError("Dilation radius must be non-negative")
     if radius == 0:
-        return centerline.copy()
+        return mask.copy()
     diameter = radius * 2 + 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
-    return cv2.dilate(centerline, kernel, iterations=1)
+    return cv2.dilate(mask, kernel, iterations=1)
 
 
-def edge_difference_helper(content_rgb: np.ndarray, output_rgb: np.ndarray) -> np.ndarray:
+def erode_binary(mask: np.ndarray, radius: int) -> np.ndarray:
+    require_binary_uint8(mask, "binary mask")
+    if radius < 0:
+        raise ValueError("Erosion radius must be non-negative")
+    if radius == 0:
+        return mask.copy()
+    diameter = radius * 2 + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
+    return cv2.erode(mask, kernel, iterations=1, borderType=cv2.BORDER_CONSTANT, borderValue=0)
+
+
+def apply_rigid_priority(
+    rigid: np.ndarray, soft: np.ndarray, valid_content: np.ndarray, guard_radius: int = 1
+) -> tuple[np.ndarray, np.ndarray]:
+    require_binary_uint8(rigid, "rigid")
+    require_binary_uint8(soft, "soft")
+    require_binary_uint8(valid_content, "valid_content")
+    if rigid.shape != soft.shape or rigid.shape != valid_content.shape:
+        raise ValueError("Rigid, soft, and valid-content masks must share one shape")
+    valid = valid_content == 255
+    rigid_final = np.where((rigid == 255) & valid, 255, 0).astype(np.uint8)
+    guard = dilate_binary(rigid_final, guard_radius) == 255
+    soft_final = np.where((soft == 255) & valid & ~guard, 255, 0).astype(np.uint8)
+    return rigid_final, soft_final
+
+
+def edge_difference_helper(
+    content_rgb: np.ndarray, output_rgb: np.ndarray, valid_eval: np.ndarray | None = None
+) -> np.ndarray:
     if content_rgb.shape != output_rgb.shape:
         raise ValueError(f"Content/output shape mismatch: {content_rgb.shape} vs {output_rgb.shape}")
     content_edges = canny_centerlines(content_rgb)
     output_edges = canny_centerlines(output_rgb)
-    return cv2.bitwise_xor(content_edges, output_edges)
+    difference = cv2.bitwise_xor(content_edges, output_edges)
+    if valid_eval is not None:
+        require_binary_uint8(valid_eval, "valid_eval")
+        if valid_eval.shape != difference.shape:
+            raise ValueError("valid_eval must match edge-difference shape")
+        difference = cv2.bitwise_and(difference, valid_eval)
+    return difference

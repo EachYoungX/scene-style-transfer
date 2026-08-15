@@ -12,6 +12,7 @@ from build_v2_0_annotation_manifest import (  # noqa: E402
     a2_name,
     annotation_status,
     content_name,
+    derive_valid_content_mask,
     prepare_empty_mask,
     save_aligned_a2,
     validate_mask_directory,
@@ -69,3 +70,12 @@ def test_mask_directory_rejects_rgb_source_images(tmp_path):
     Image.new("RGB", (512, 512)).save(tmp_path / "photo_church.png")
     with pytest.raises(ValueError, match="8-bit grayscale"):
         validate_mask_directory(tmp_path, {"photo_church.png"}, 512)
+
+
+def test_valid_content_mask_excludes_square_padding():
+    aligned = np.zeros((12, 12, 3), dtype=np.uint8)
+    aligned[3:9, :, :] = 100
+    valid = derive_valid_content_mask(aligned)
+    assert not valid[:3].any()
+    assert (valid[3:9] == 255).all()
+    assert not valid[9:].any()

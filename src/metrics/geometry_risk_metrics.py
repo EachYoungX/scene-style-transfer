@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 
+import cv2
 import numpy as np
 
 
@@ -30,10 +31,13 @@ def top_fraction_risk(risk: np.ndarray, top_fraction: float, valid: np.ndarray |
 @dataclass(frozen=True)
 class BinaryRiskMetrics:
     failure_coverage: float
+    failure_coverage_tolerant: float
     risk_precision: float
+    risk_precision_tolerant: float
     failure_iou: float
     soft_fpr: float
     rigid_recall: float
+    rigid_recall_tolerant: float
     risk_fraction: float
     failure_fraction: float
 
@@ -47,6 +51,7 @@ def binary_risk_metrics(
     soft: np.ndarray,
     rigid: np.ndarray,
     valid: np.ndarray | None = None,
+    tolerance_radius: int = 0,
 ) -> BinaryRiskMetrics:
     shape = predicted_risk.shape
     if any(array.shape != shape for array in (failure, soft, rigid)):
@@ -59,16 +64,29 @@ def binary_risk_metrics(
     failure = np.asarray(failure, dtype=bool) & valid
     soft = np.asarray(soft, dtype=bool) & valid
     rigid = np.asarray(rigid, dtype=bool) & valid
+    if tolerance_radius < 0:
+        raise ValueError("tolerance_radius must be non-negative")
+    if tolerance_radius:
+        diameter = tolerance_radius * 2 + 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
+        dilated_risk = cv2.dilate(risk.astype(np.uint8), kernel).astype(bool) & valid
+        dilated_failure = cv2.dilate(failure.astype(np.uint8), kernel).astype(bool) & valid
+    else:
+        dilated_risk = risk
+        dilated_failure = failure
     intersection = int((risk & failure).sum())
     union = int((risk | failure).sum())
     valid_count = int(valid.sum())
     iou = 1.0 if union == 0 else float(intersection / union)
     return BinaryRiskMetrics(
         failure_coverage=_safe_ratio(intersection, int(failure.sum())),
+        failure_coverage_tolerant=_safe_ratio(int((dilated_risk & failure).sum()), int(failure.sum())),
         risk_precision=_safe_ratio(intersection, int(risk.sum())),
+        risk_precision_tolerant=_safe_ratio(int((risk & dilated_failure).sum()), int(risk.sum())),
         failure_iou=iou,
         soft_fpr=_safe_ratio(int((risk & soft).sum()), int(soft.sum())),
         rigid_recall=_safe_ratio(int((risk & rigid).sum()), int(rigid.sum())),
+        rigid_recall_tolerant=_safe_ratio(int((dilated_risk & rigid).sum()), int(rigid.sum())),
         risk_fraction=_safe_ratio(int(risk.sum()), valid_count),
         failure_fraction=_safe_ratio(int(failure.sum()), valid_count),
     )

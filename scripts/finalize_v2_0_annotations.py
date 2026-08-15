@@ -9,11 +9,12 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT / "src"))
 
-from annotations.geometry_protocol import dilate_centerline  # noqa: E402
+from annotations.geometry_protocol import apply_rigid_priority  # noqa: E402
 from metrics.mask_utils import load_binary_mask  # noqa: E402
 STATUS_FIELDS = (
     "rigid_status",
@@ -44,7 +45,7 @@ def main() -> None:
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     experiment = config["experiment"]
     size = int(experiment["image_size"])
-    radius = int(config["annotations"]["rigid_centerline"]["dilation_radius_px"])
+    guard_radius = int(config["annotations"]["soft_stylization"]["rigid_guard_radius_px"])
     manifest_path = ROOT / experiment["annotation_manifest"]
     with manifest_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
@@ -52,11 +53,10 @@ def main() -> None:
         raise ValueError("Annotation manifest is empty")
 
     checked: set[Path] = set()
+    normalized: set[tuple[Path, Path, Path]] = set()
     for row in rows:
         if row.get("source_status") != "ready":
             raise RuntimeError(f"A2 source is not ready: {row['sample_id']}")
-        if row.get("rigid_centerline_status") != "reviewed":
-            raise RuntimeError(f"Rigid centerline is not marked reviewed: {row['rigid_structure_centerline']}")
         for field in MASK_FIELDS:
             path = ROOT / row[field]
             if path in checked:
@@ -65,14 +65,27 @@ def main() -> None:
                 raise FileNotFoundError(path)
             load_binary_mask(path, (size, size))
             checked.add(path)
-        centerline = load_binary_mask(ROOT / row["rigid_structure_centerline"], (size, size))
-        expected_rigid = dilate_centerline(centerline.astype(np.uint8) * 255, radius) == 255
-        final_rigid = load_binary_mask(ROOT / row["rigid_structure_mask"], (size, size))
-        if not np.array_equal(expected_rigid, final_rigid):
-            raise ValueError(
-                f"Final rigid mask was not materialized with the frozen radius={radius}: "
-                f"{row['rigid_structure_mask']}"
+        valid_content_path = ROOT / row["valid_content_mask"]
+        valid_content = load_binary_mask(valid_content_path, (size, size))
+        rigid_path = ROOT / row["rigid_structure_mask"]
+        soft_path = ROOT / row["soft_stylization_mask"]
+        content_masks = (rigid_path, soft_path, valid_content_path)
+        if content_masks not in normalized:
+            rigid, soft = apply_rigid_priority(
+                load_binary_mask(rigid_path, (size, size)).astype(np.uint8) * 255,
+                load_binary_mask(soft_path, (size, size)).astype(np.uint8) * 255,
+                valid_content.astype(np.uint8) * 255,
+                guard_radius,
             )
+            Image.fromarray(rigid).save(rigid_path)
+            Image.fromarray(soft).save(soft_path)
+            if ((rigid == 255) & (soft == 255)).any():
+                raise AssertionError(f"Rigid/soft overlap remains after normalization: {rigid_path}")
+            normalized.add(content_masks)
+        for field in ("geometry_failure_mask", "uncertainty_mask"):
+            path = ROOT / row[field]
+            clipped = load_binary_mask(path, (size, size)) & valid_content
+            Image.fromarray(clipped.astype(np.uint8) * 255).save(path)
         for field in STATUS_FIELDS:
             row[field] = "complete"
 

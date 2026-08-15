@@ -72,3 +72,16 @@ def test_threshold_and_top_fraction_ordering():
     top50, cutoff50 = top_fraction_risk(risk, 0.50)
     assert top20.sum() <= top50.sum()
     assert cutoff20 >= cutoff50
+
+
+def test_spatial_tolerance_is_applied_in_metrics_not_ground_truth():
+    failure, soft, rigid = masks((9, 9))
+    rigid[4, 4] = True
+    failure[4, 4] = True
+    predicted = np.zeros_like(failure)
+    predicted[4, 6] = True
+    result = binary_risk_metrics(predicted, failure, soft, rigid, tolerance_radius=2)
+    assert result.failure_coverage == 0.0
+    assert result.failure_coverage_tolerant == 1.0
+    assert result.rigid_recall == 0.0
+    assert result.rigid_recall_tolerant == 1.0
