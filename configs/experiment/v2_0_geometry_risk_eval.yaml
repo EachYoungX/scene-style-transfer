@@ -4,6 +4,7 @@ experiment:
   image_size: 512
   manifest: configs/experiment/v2_0_geometry_risk_cases.csv
   output_root: data/derived/v2_0_geometry_risk
+  annotation_manifest: data/derived/v2_0_geometry_risk/annotation_manifest.csv
 
 risk_map:
   implementation: src/preprocess/structure_risk.py

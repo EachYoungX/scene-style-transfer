@@ -79,7 +79,8 @@ def main() -> None:
     args = parser.parse_args()
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     output_root = ROOT / config["experiment"]["output_root"]
-    with (output_root / "manifest.csv").open(newline="", encoding="utf-8") as handle:
+    manifest_path = ROOT / config["experiment"]["annotation_manifest"]
+    with manifest_path.open(newline="", encoding="utf-8") as handle:
         rows = sorted(csv.DictReader(handle), key=lambda row: row["sample_id"])
     preview_root = output_root / "previews"
     preview_root.mkdir(parents=True, exist_ok=True)
@@ -88,8 +89,8 @@ def main() -> None:
     blind_previews: list[Image.Image] = []
     for row in rows:
         sample_id = row["sample_id"]
-        content = load_rgb(ROOT / row["content_copy"])
-        output = load_rgb(ROOT / row["a2_output_copy"])
+        content = load_rgb(ROOT / row["content_source"])
+        output = load_rgb(ROOT / row["a2_output_source"])
         risk = load_continuous_risk(ROOT / row["risk_path"])
         blind = join_panels(
             [
@@ -106,7 +107,11 @@ def main() -> None:
         ]
         failure_path = ROOT / row["geometry_failure_mask"]
         soft_path = ROOT / row["soft_stylization_mask"]
-        if failure_path.exists() and soft_path.exists():
+        annotations_complete = all(
+            row.get(field) == "complete"
+            for field in ("rigid_status", "soft_status", "geometry_failure_status", "uncertainty_status")
+        )
+        if annotations_complete and failure_path.exists() and soft_path.exists():
             failure = load_mask(failure_path)
             soft = load_mask(soft_path)
             panels.extend(

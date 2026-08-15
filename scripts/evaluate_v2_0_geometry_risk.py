@@ -59,14 +59,24 @@ def main() -> None:
     risk_config = config["risk_map"]
     annotation_config = config["annotations"]
     output_root = ROOT / experiment["output_root"]
-    rows = read_manifest(output_root / "manifest.csv")
+    rows = read_manifest(ROOT / experiment["annotation_manifest"])
     result_root = output_root / "evaluation"
     result_root.mkdir(parents=True, exist_ok=True)
 
     threshold_rows: list[dict[str, object]] = []
     continuous_rows: list[dict[str, object]] = []
     missing: list[str] = []
+    incomplete: list[str] = []
     for row in rows:
+        status_fields = (
+            "rigid_status",
+            "soft_status",
+            "geometry_failure_status",
+            "uncertainty_status",
+        )
+        if any(row.get(field) != "complete" for field in status_fields):
+            incomplete.append(row["sample_id"])
+            continue
         required = [
             ROOT / row["risk_path"],
             ROOT / row["rigid_structure_mask"],
@@ -121,6 +131,12 @@ def main() -> None:
                 }
             )
 
+    if incomplete:
+        raise RuntimeError(
+            "Annotations are not marked complete for: "
+            + ", ".join(incomplete)
+            + ". Mark all four status columns complete only after reviewing the masks."
+        )
     if missing:
         raise FileNotFoundError(
             "Annotations are incomplete for: " + ", ".join(missing) + ". Complete all frozen samples before evaluation."
