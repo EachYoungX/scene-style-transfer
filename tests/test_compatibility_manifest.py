@@ -24,4 +24,4 @@ def test_compatibility_manifest_contains_new_samples():
     assert "photo_sea_wave.jpg" in text
     assert "photo_flower_bed.jpg" in text
     assert "photo_lecreusois_church.jpg" in text
-    assert "photo_seregei_city.jpg" in text
+    assert "photo_seregei_street.jpg" in text

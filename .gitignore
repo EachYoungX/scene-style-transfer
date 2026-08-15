@@ -9,7 +9,7 @@ data/manifests/
 data/derived/
 data/previews/
 papers
-docs
+plan
 archives
 
 # Models (downloaded weights)
