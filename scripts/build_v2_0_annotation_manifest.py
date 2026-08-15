@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,15 @@ import yaml
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / "src"))
+
+from annotations.geometry_protocol import (  # noqa: E402
+    canny_centerlines,
+    edge_difference_helper,
+    lsd_centerlines,
+    require_binary_uint8,
+    rigid_centerline_candidate,
+)
 
 CONTENT_NAMES = {
     "photo_lecreusois_church": "photo_church.png",
@@ -85,6 +95,22 @@ def prepare_empty_mask(path: Path, size: int, reset: bool = False) -> None:
     Image.new("L", (size, size), color=0).save(path)
 
 
+def save_binary_mask(array: np.ndarray, path: Path) -> None:
+    require_binary_uint8(array, str(path))
+    Image.fromarray(array).save(path)
+
+
+def prepare_centerline(path: Path, candidate: np.ndarray, reset: bool = False) -> None:
+    if path.exists() and not reset:
+        image = Image.open(path)
+        array = np.asarray(image)
+        if image.mode != "L" or array.shape != candidate.shape:
+            raise ValueError(f"Existing centerline must be 512x512 8-bit grayscale: {path}")
+        require_binary_uint8(array, str(path))
+        return
+    save_binary_mask(candidate, path)
+
+
 def is_empty_mask(path: Path) -> bool:
     return not np.asarray(Image.open(path).convert("L"), dtype=np.uint8).any()
 
@@ -107,6 +133,7 @@ def validate_mask_directory(directory: Path, expected_names: set[str], size: int
         image = Image.open(directory / name)
         if image.mode != "L" or image.size != (size, size):
             raise ValueError(f"Mask must be {size}x{size} 8-bit grayscale: {directory / name}")
+        require_binary_uint8(np.asarray(image), str(directory / name))
 
 
 def main() -> None:
@@ -124,6 +151,7 @@ def main() -> None:
     output_root = ROOT / experiment["output_root"]
     size = int(experiment["image_size"])
     rows = load_rows(ROOT / experiment["manifest"])
+    rigid_config = config["annotations"]["rigid_centerline"]
 
     manifest_path = ROOT / experiment["annotation_manifest"]
     previous_rows: dict[str, dict[str, str]] = {}
@@ -133,10 +161,21 @@ def main() -> None:
     source_root = output_root / "annotation_sources"
     content_root = source_root / "content"
     a2_root = source_root / "a2_outputs"
+    helper_root = source_root / "helpers"
+    canny_root = helper_root / "canny"
+    lsd_root = helper_root / "lsd"
+    candidate_root = helper_root / "rigid_candidates"
+    edge_difference_root = helper_root / "edge_difference"
     annotation_root = output_root / "annotations"
+    centerline_root = output_root / "annotation_working" / "rigid_structure_centerline"
     for directory in (
         content_root,
         a2_root,
+        canny_root,
+        lsd_root,
+        candidate_root,
+        edge_difference_root,
+        centerline_root,
         annotation_root / "rigid_structure",
         annotation_root / "soft_stylization",
         annotation_root / "geometry_failure",
@@ -153,6 +192,18 @@ def main() -> None:
     for name, grouped_rows in sorted(content_groups.items()):
         source = resolve_content_source(grouped_rows)
         save_aligned_content(source, content_root / name, size)
+        content_rgb = np.asarray(Image.open(content_root / name).convert("RGB"))
+        canny = canny_centerlines(
+            content_rgb,
+            int(rigid_config["canny_low_threshold"]),
+            int(rigid_config["canny_high_threshold"]),
+        )
+        lsd = lsd_centerlines(content_rgb, float(rigid_config["lsd_min_length_px"]))
+        candidate = rigid_centerline_candidate(canny, lsd)
+        save_binary_mask(canny, canny_root / name)
+        save_binary_mask(lsd, lsd_root / name)
+        save_binary_mask(candidate, candidate_root / name)
+        prepare_centerline(centerline_root / name, candidate, args.reset_masks)
         prepare_empty_mask(annotation_root / "rigid_structure" / name, size, args.reset_masks)
         prepare_empty_mask(annotation_root / "soft_stylization" / name, size, args.reset_masks)
 
@@ -168,6 +219,9 @@ def main() -> None:
         source_output = ROOT / row["output_path"]
         if source_output.exists():
             save_aligned_a2(source_output, a2_source, size)
+            content_rgb = np.asarray(Image.open(content_source).convert("RGB"))
+            output_rgb = np.asarray(Image.open(a2_source).convert("RGB"))
+            save_binary_mask(edge_difference_helper(content_rgb, output_rgb), edge_difference_root / a2_file)
             source_status = "ready"
         else:
             source_status = "missing_a2_output"
@@ -185,11 +239,17 @@ def main() -> None:
                 "content_source": str(content_source.relative_to(ROOT)),
                 "a2_output_source": str(a2_source.relative_to(ROOT)),
                 "risk_path": str((output_root / "risk_maps" / sample_id / "continuous.npy").relative_to(ROOT)),
+                "canny_helper": str((canny_root / content_file).relative_to(ROOT)),
+                "lsd_helper": str((lsd_root / content_file).relative_to(ROOT)),
+                "rigid_candidate": str((candidate_root / content_file).relative_to(ROOT)),
+                "edge_difference_helper": str((edge_difference_root / a2_file).relative_to(ROOT)),
+                "rigid_structure_centerline": str((centerline_root / content_file).relative_to(ROOT)),
                 "rigid_structure_mask": str(rigid_mask.relative_to(ROOT)),
                 "soft_stylization_mask": str(soft_mask.relative_to(ROOT)),
                 "geometry_failure_mask": str(failure_mask.relative_to(ROOT)),
                 "uncertainty_mask": str(uncertainty_mask.relative_to(ROOT)),
                 "source_status": source_status,
+                "rigid_centerline_status": previous.get("rigid_centerline_status", "candidate_unreviewed"),
                 "rigid_status": annotation_status(rigid_mask, previous.get("rigid_status", "")),
                 "soft_status": annotation_status(soft_mask, previous.get("soft_status", "")),
                 "geometry_failure_status": annotation_status(
@@ -206,6 +266,7 @@ def main() -> None:
     content_names = set(content_groups)
     a2_names = {a2_name(row) for row in rows}
     validate_mask_directory(annotation_root / "rigid_structure", content_names, size)
+    validate_mask_directory(centerline_root, content_names, size)
     validate_mask_directory(annotation_root / "soft_stylization", content_names, size)
     validate_mask_directory(annotation_root / "geometry_failure", a2_names, size)
     validate_mask_directory(annotation_root / "uncertainty", a2_names, size)

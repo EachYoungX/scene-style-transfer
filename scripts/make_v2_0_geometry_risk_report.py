@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT / "src"))
 
-from metrics.mask_utils import binary_mask, load_continuous_risk, load_mask, load_rgb  # noqa: E402
+from metrics.mask_utils import load_binary_mask, load_continuous_risk, load_rgb  # noqa: E402
 
 
 def labeled_panel(array: np.ndarray, label: str, size: int = 384) -> Image.Image:
@@ -40,8 +40,6 @@ def mask_rgb(mask: np.ndarray) -> np.ndarray:
 
 def comparison_overlay(risk: np.ndarray, failure: np.ndarray, soft: np.ndarray, cutoff: float) -> np.ndarray:
     high = risk >= cutoff
-    failure = binary_mask(failure)
-    soft = binary_mask(soft)
     canvas = np.full((*risk.shape, 3), 28, dtype=np.uint8)
     canvas[soft] = (0, 150, 70)  # green: soft region
     canvas[high & ~failure] = (255, 210, 0)  # yellow: predicted only
@@ -112,8 +110,8 @@ def main() -> None:
             for field in ("rigid_status", "soft_status", "geometry_failure_status", "uncertainty_status")
         )
         if annotations_complete and failure_path.exists() and soft_path.exists():
-            failure = load_mask(failure_path)
-            soft = load_mask(soft_path)
+            failure = load_binary_mask(failure_path)
+            soft = load_binary_mask(soft_path)
             panels.extend(
                 [
                     labeled_panel(mask_rgb(failure), "failure mask"),

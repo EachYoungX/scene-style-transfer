@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
+import numpy as np
 import yaml
-from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / "src"))
+
+from annotations.geometry_protocol import dilate_centerline  # noqa: E402
+from metrics.mask_utils import load_binary_mask  # noqa: E402
 STATUS_FIELDS = (
     "rigid_status",
     "soft_status",
@@ -39,6 +44,7 @@ def main() -> None:
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     experiment = config["experiment"]
     size = int(experiment["image_size"])
+    radius = int(config["annotations"]["rigid_centerline"]["dilation_radius_px"])
     manifest_path = ROOT / experiment["annotation_manifest"]
     with manifest_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
@@ -49,16 +55,24 @@ def main() -> None:
     for row in rows:
         if row.get("source_status") != "ready":
             raise RuntimeError(f"A2 source is not ready: {row['sample_id']}")
+        if row.get("rigid_centerline_status") != "reviewed":
+            raise RuntimeError(f"Rigid centerline is not marked reviewed: {row['rigid_structure_centerline']}")
         for field in MASK_FIELDS:
             path = ROOT / row[field]
             if path in checked:
                 continue
             if not path.exists():
                 raise FileNotFoundError(path)
-            image = Image.open(path)
-            if image.mode != "L" or image.size != (size, size):
-                raise ValueError(f"Mask must be {size}x{size} 8-bit grayscale: {path}")
+            load_binary_mask(path, (size, size))
             checked.add(path)
+        centerline = load_binary_mask(ROOT / row["rigid_structure_centerline"], (size, size))
+        expected_rigid = dilate_centerline(centerline.astype(np.uint8) * 255, radius) == 255
+        final_rigid = load_binary_mask(ROOT / row["rigid_structure_mask"], (size, size))
+        if not np.array_equal(expected_rigid, final_rigid):
+            raise ValueError(
+                f"Final rigid mask was not materialized with the frozen radius={radius}: "
+                f"{row['rigid_structure_mask']}"
+            )
         for field in STATUS_FIELDS:
             row[field] = "complete"
 

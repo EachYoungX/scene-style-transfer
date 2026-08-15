@@ -23,10 +23,8 @@ from metrics.geometry_risk_metrics import (  # noqa: E402
     top_fraction_risk,
 )
 from metrics.mask_utils import (  # noqa: E402
-    binary_mask,
+    load_binary_mask,
     load_continuous_risk,
-    load_mask,
-    valid_mask,
     validate_alignment,
 )
 
@@ -57,7 +55,6 @@ def main() -> None:
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     experiment = config["experiment"]
     risk_config = config["risk_map"]
-    annotation_config = config["annotations"]
     output_root = ROOT / experiment["output_root"]
     rows = read_manifest(ROOT / experiment["annotation_manifest"])
     result_root = output_root / "evaluation"
@@ -87,19 +84,15 @@ def main() -> None:
             missing.append(row["sample_id"])
             continue
         risk = load_continuous_risk(required[0])
-        rigid_raw = load_mask(required[1])
-        failure_raw = load_mask(required[2])
-        soft_raw = load_mask(required[3])
+        rigid = load_binary_mask(required[1])
+        failure = load_binary_mask(required[2])
+        soft = load_binary_mask(required[3])
         uncertainty_path = ROOT / row["uncertainty_mask"]
-        uncertainty = load_mask(uncertainty_path) if uncertainty_path.exists() else None
+        uncertainty = load_binary_mask(uncertainty_path)
         validate_alignment(
-            row["sample_id"], risk=risk, rigid=rigid_raw, failure=failure_raw, soft=soft_raw, uncertainty=uncertainty
+            row["sample_id"], risk=risk, rigid=rigid, failure=failure, soft=soft, uncertainty=uncertainty
         )
-        valid = valid_mask(risk.shape, uncertainty, float(annotation_config["uncertainty_threshold"]))
-        mask_threshold = float(annotation_config["mask_threshold"])
-        rigid = binary_mask(rigid_raw, mask_threshold)
-        failure = binary_mask(failure_raw, mask_threshold)
-        soft = binary_mask(soft_raw, mask_threshold)
+        valid = ~uncertainty
         continuous = continuous_risk_metrics(risk, failure, valid)
         continuous_rows.append(
             {

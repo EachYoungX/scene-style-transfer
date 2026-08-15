@@ -46,6 +46,25 @@ def load_mask(path: Path, shape: tuple[int, int] = TARGET_SHAPE) -> np.ndarray:
     return np.clip(array, 0.0, 1.0)
 
 
+def load_binary_mask(path: Path, shape: tuple[int, int] = TARGET_SHAPE) -> np.ndarray:
+    """Load a final annotation without resizing or thresholding it.
+
+    Final V2.0 annotations are definitionally 8-bit grayscale PNGs containing
+    only absolute black and white. Rejecting all other inputs removes an
+    otherwise hidden annotation-confidence threshold from evaluation.
+    """
+    image = Image.open(path)
+    if image.mode != "L":
+        raise ValueError(f"Binary mask must be 8-bit grayscale (mode L): {path}")
+    array = np.asarray(image, dtype=np.uint8)
+    if array.shape != shape:
+        raise ValueError(f"Binary mask must have shape {shape}, got {array.shape}: {path}")
+    values = set(np.unique(array).tolist())
+    if not values <= {0, 255}:
+        raise ValueError(f"Binary mask must contain only 0 and 255, got {sorted(values)}: {path}")
+    return array == 255
+
+
 def binary_mask(mask: np.ndarray, threshold: float = 0.5) -> np.ndarray:
     if mask.ndim != 2:
         raise ValueError(f"Mask must be 2-D, got {mask.shape}")
