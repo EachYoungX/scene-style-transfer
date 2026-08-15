@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from typing import Any, List, Optional
 
@@ -62,6 +63,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         processor_name: str = "",
         residual_logger: ResidualLogger | None = None,
         enable_logging: bool = True,
+        spatial_gate: torch.Tensor | None = None,
     ) -> None:
         super().__init__(
             hidden_size=hidden_size,
@@ -72,6 +74,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         self.processor_name = processor_name
         self.residual_logger = residual_logger
         self.enable_logging = enable_logging
+        self.spatial_gate = spatial_gate
 
     @classmethod
     def from_processor(
@@ -80,6 +83,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         processor_name: str = "",
         residual_logger: ResidualLogger | None = None,
         enable_logging: bool = True,
+        spatial_gate: torch.Tensor | None = None,
     ) -> "InstrumentedIPAdapterAttnProcessor2_0":
         instrumented = cls(
             hidden_size=processor.hidden_size,
@@ -89,6 +93,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             processor_name=processor_name,
             residual_logger=residual_logger,
             enable_logging=enable_logging,
+            spatial_gate=spatial_gate,
         )
         instrumented.load_state_dict(processor.state_dict())
         reference_param = next(processor.parameters(), None)
@@ -127,6 +132,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             hidden_states = attn.spatial_norm(hidden_states, temb)
 
         input_ndim = hidden_states.ndim
+        height = width = None
 
         if input_ndim == 4:
             batch_size, channel, height, width = hidden_states.shape
@@ -241,6 +247,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
 
                         mask_downsample = mask_downsample.to(dtype=query.dtype, device=query.device)
                         ip_delta = scale[i] * (_current_ip_hidden_states * mask_downsample)
+                        ip_delta = self._apply_spatial_gate(ip_delta, input_ndim, height, width)
                         self._log_ip_delta(ip_delta, base_hidden_states, float(scale[i]))
                         hidden_states = hidden_states + ip_delta
                 else:
@@ -260,6 +267,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
                     current_ip_hidden_states = current_ip_hidden_states.to(query.dtype)
 
                     ip_delta = scale * current_ip_hidden_states
+                    ip_delta = self._apply_spatial_gate(ip_delta, input_ndim, height, width)
                     self._log_ip_delta(ip_delta, base_hidden_states, float(scale))
                     hidden_states = hidden_states + ip_delta
 
@@ -275,6 +283,45 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         hidden_states = hidden_states / attn.rescale_output_factor
 
         return hidden_states
+
+    def _apply_spatial_gate(
+        self,
+        ip_delta: torch.Tensor,
+        input_ndim: int,
+        height: int | None = None,
+        width: int | None = None,
+    ) -> torch.Tensor:
+        """Apply a nearest-neighbor spatial gate to the image-branch residual only."""
+        if self.spatial_gate is None:
+            return ip_delta
+        if input_ndim == 3:
+            side = int(math.isqrt(ip_delta.shape[1]))
+            if side * side != ip_delta.shape[1]:
+                raise ValueError(
+                    "Rigid-only spatial gating requires square token grids when attention hidden states are 3-D."
+                )
+            height = width = side
+        elif input_ndim != 4 or height is None or width is None:
+            raise ValueError("Rigid-only spatial gating requires image-shaped attention hidden states.")
+
+        gate = self.spatial_gate
+        if gate.ndim == 2:
+            gate = gate.unsqueeze(0).unsqueeze(0)
+        elif gate.ndim == 3:
+            gate = gate.unsqueeze(0)
+        if gate.ndim != 4 or gate.shape[0] != 1 or gate.shape[1] != 1:
+            raise ValueError("spatial_gate must have shape [H, W], [1, H, W], or [1, 1, H, W].")
+        gate = F.interpolate(
+            gate.to(device=ip_delta.device, dtype=ip_delta.dtype),
+            size=(height, width),
+            mode="nearest",
+        ).reshape(1, height * width, 1)
+        if gate.shape[1] != ip_delta.shape[1]:
+            raise ValueError(
+                f"Spatial gate token count {gate.shape[1]} does not match IP residual token count "
+                f"{ip_delta.shape[1]} ({height}x{width})."
+            )
+        return ip_delta * gate
 
     def _log_ip_delta(self, ip_delta: torch.Tensor, base_hidden_states: torch.Tensor, scale: float) -> None:
         if not self.enable_logging or self.residual_logger is None:
@@ -300,7 +347,13 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         )
 
 
-def instrument_ip_adapter_processors(pipe: Any, residual_logger: ResidualLogger) -> list[str]:
+def instrument_ip_adapter_processors(
+    pipe: Any,
+    residual_logger: ResidualLogger | None = None,
+    *,
+    spatial_gate: torch.Tensor | None = None,
+    enable_logging: bool = True,
+) -> list[str]:
     replaced: list[str] = []
     processors = dict(pipe.unet.attn_processors)
     for name, processor in processors.items():
@@ -310,7 +363,16 @@ def instrument_ip_adapter_processors(pipe: Any, residual_logger: ResidualLogger)
             processor,
             processor_name=name,
             residual_logger=residual_logger,
+            enable_logging=enable_logging,
+            spatial_gate=spatial_gate,
         )
         replaced.append(name)
     pipe.unet.set_attn_processor(processors)
     return replaced
+
+
+def set_spatial_gate(pipe: Any, spatial_gate: torch.Tensor) -> None:
+    """Update the gate for already instrumented IP-Adapter processors."""
+    for processor in pipe.unet.attn_processors.values():
+        if isinstance(processor, InstrumentedIPAdapterAttnProcessor2_0):
+            processor.spatial_gate = spatial_gate

@@ -1,0 +1,29 @@
+experiment:
+  name: v2_0_rigid_only
+  image_size: 512
+  manifest: configs/experiment/v2_0_geometry_risk_cases.csv
+  output_root: runs/ip_adapter_plus_injection/v2_0_rigid_only
+  rigid_masks: data/derived/v2_0_geometry_risk/annotations/rigid_structure
+  valid_eval_masks: data/derived/v2_0_geometry_risk/valid_masks/valid_eval
+
+formal_cases:
+  - v1_5_demuth_church
+  - v1_5_kulhanek_snow_winter
+sanity_case: v1_5_demuth_wave
+
+seeds:
+  sweep: [42]
+  multiseed: [42, 123, 777]
+
+suppression_sweep: [0.00, 0.25, 0.50, 0.75]
+uniform_retain_ratio: 1.00
+selected_retain_ratio: 0.50
+
+fixed_parameters:
+  variant: A2_highres_only
+  num_inference_steps: 30
+  strength: 0.76
+  guidance_scale: 5.8
+  controlnet_scale: 0.72
+  ip_adapter_scale: 0.9
+  spatial_interpolation: nearest
