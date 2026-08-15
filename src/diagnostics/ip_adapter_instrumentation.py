@@ -26,6 +26,10 @@ class ResidualRecord:
     ip_residual_rms: float
     base_hidden_rms: float
     relative_ip_energy: float
+    spatial_gate_mean: float | None = None
+    spatial_gate_suppressed_fraction: float | None = None
+    spatial_gate_height: int | None = None
+    spatial_gate_width: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -75,6 +79,10 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         self.residual_logger = residual_logger
         self.enable_logging = enable_logging
         self.spatial_gate = spatial_gate
+        self._last_gate_mean: float | None = None
+        self._last_gate_suppressed_fraction: float | None = None
+        self._last_gate_height: int | None = None
+        self._last_gate_width: int | None = None
 
     @classmethod
     def from_processor(
@@ -319,6 +327,11 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             -gate.to(device=ip_delta.device, dtype=ip_delta.dtype),
             output_size=(height, width),
         ).reshape(1, height * width, 1)
+        with torch.no_grad():
+            self._last_gate_mean = float(gate.float().mean().item())
+            self._last_gate_suppressed_fraction = float((gate.float() < 0.999).float().mean().item())
+            self._last_gate_height = height
+            self._last_gate_width = width
         if gate.shape[1] != ip_delta.shape[1]:
             raise ValueError(
                 f"Spatial gate token count {gate.shape[1]} does not match IP residual token count "
@@ -346,6 +359,10 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
                 ip_residual_rms=ip_residual_rms,
                 base_hidden_rms=base_hidden_rms,
                 relative_ip_energy=relative_ip_energy,
+                spatial_gate_mean=self._last_gate_mean,
+                spatial_gate_suppressed_fraction=self._last_gate_suppressed_fraction,
+                spatial_gate_height=self._last_gate_height,
+                spatial_gate_width=self._last_gate_width,
             )
         )
 

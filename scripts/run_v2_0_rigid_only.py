@@ -90,6 +90,25 @@ def frozen_control_path(project_root: Path, case: dict[str, str]) -> Path | None
     return path if path.exists() else None
 
 
+def save_gate_snapshots(gate: torch.Tensor, out_dir: Path, label: str) -> dict[str, object]:
+    """Save diagnostic runtime gates without changing the final annotation masks."""
+    snapshot_dir = out_dir / "gate_snapshots" / label
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    base = gate.detach().float().cpu()[None, None]
+    summary: dict[str, object] = {"label": label, "source_size": [512, 512], "scales": {}}
+    for size in (512, 64, 32, 16, 8):
+        pooled = -torch.nn.functional.adaptive_max_pool2d(-base, (size, size))[0, 0].numpy()
+        Image.fromarray(np.clip(np.rint(pooled * 255), 0, 255).astype(np.uint8), mode="L").save(
+            snapshot_dir / f"gate_{size}x{size}.png"
+        )
+        summary["scales"][str(size)] = {
+            "suppressed_tokens": int(np.count_nonzero(pooled < 0.999)),
+            "mean_gate": float(pooled.mean()),
+        }
+    (snapshot_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
+
+
 def run_case(
     case: dict[str, str],
     project_root: Path,
@@ -136,6 +155,7 @@ def run_case(
     for label, ratio in ratios:
         gate, gate_stats = load_gate(project_root, case, ratio, args)
         set_spatial_gate(pipe, gate)
+        gate_stats["snapshots"] = save_gate_snapshots(gate, out_dir, label)
         if args.log_residuals:
             residual_logger.clear()
         schedule = build_variant_schedule(
