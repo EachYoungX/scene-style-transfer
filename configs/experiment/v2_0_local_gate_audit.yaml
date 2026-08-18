@@ -1,0 +1,27 @@
+experiment:
+  name: v2_0_local_gate_audit
+  case_id: v1_5_kulhanek_snow_winter
+  seed: 123
+  retention: 0.0
+  run_root: runs/ip_adapter_plus_injection/v2_0_local_gate_audit
+
+roi:
+  name: center_building
+  # Frozen in the 512x512 annotation-source coordinate system.
+  x0: 205
+  y0: 312
+  x1: 232
+  y1: 335
+  outer_ring_px: 12
+
+paths:
+  content_source: data/derived/v2_0_geometry_risk/annotation_sources/content/photo_snow_winter.png
+  rigid_mask: data/derived/v2_0_geometry_risk/annotations/rigid_structure/photo_snow_winter.png
+  valid_content_mask: data/derived/v2_0_geometry_risk/valid_masks/valid_content/photo_snow_winter.png
+  valid_eval_mask: data/derived/v2_0_geometry_risk/valid_masks/valid_eval/photo_snow_winter.png
+  uniform_run: runs/ip_adapter_plus_injection/v2_0_rigid_only_sweep_seed123/v1_5_kulhanek_snow_winter/seed123
+
+audit:
+  expected_active_resolutions: [64, 32, 16]
+  raw_gated_ratio_tolerance: 0.0001
+  non_rigid_identity_tolerance: 0.000001

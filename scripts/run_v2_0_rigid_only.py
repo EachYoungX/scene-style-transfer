@@ -73,6 +73,29 @@ def load_gate(project_root: Path, case: dict[str, str], retain_ratio: float, arg
     }
 
 
+def load_effective_rigid_mask(project_root: Path, case: dict[str, str], args: argparse.Namespace) -> torch.Tensor:
+    content_name = {
+        "v1_5_demuth_church": "photo_church.png",
+        "v1_5_demuth_wave": "photo_wave.png",
+        "v1_5_kulhanek_snow_winter": "photo_snow_winter.png",
+    }[case["canonical_case_id"]]
+    rigid = load_binary_mask(project_root / args.rigid_masks / content_name)
+    valid_eval = load_binary_mask(project_root / args.valid_eval_masks / content_name)
+    return torch.from_numpy((rigid & valid_eval).astype(np.float32))
+
+
+def parse_roi(value: str | None) -> tuple[int, int, int, int] | None:
+    if value is None:
+        return None
+    parts = [int(item.strip()) for item in value.split(",")]
+    if len(parts) != 4:
+        raise ValueError("--audit-roi must be x0,y0,x1,y1")
+    x0, y0, x1, y1 = parts
+    if not (0 <= x0 < x1 <= 512 and 0 <= y0 < y1 <= 512):
+        raise ValueError("--audit-roi must be within 512x512 and use x0<x1, y0<y1")
+    return x0, y0, x1, y1
+
+
 def aligned_content_path(project_root: Path, case: dict[str, str]) -> Path:
     """Use the frozen 512px source when the original private photo is absent."""
     names = {
@@ -133,11 +156,18 @@ def run_case(
     pipe = load_pipe(project_root, args)
     residual_logger = ResidualLogger()
     gate, gate_stats = load_gate(project_root, case, 1.0, args)
+    effective_rigid_mask = load_effective_rigid_mask(project_root, case, args) if args.audit_roi else None
     instrumented = instrument_ip_adapter_processors(
         pipe,
         residual_logger,
         spatial_gate=gate,
         enable_logging=args.log_residuals,
+        audit_rigid_mask=effective_rigid_mask,
+        audit_roi=args.audit_roi,
+        audit_outer_ring_px=args.audit_outer_ring_px,
+        spatial_gate_only_resolution=(args.only_resolution, args.only_resolution)
+        if args.only_resolution
+        else None,
     )
     embeds = pipe.prepare_ip_adapter_image_embeds(
         ip_adapter_image=style,
@@ -150,6 +180,24 @@ def run_case(
     block_weights = processor_block_weights(build_processor_map(pipe.unet.attn_processors))
     (out_dir / "processor_map.json").write_text(json.dumps(processor_map, indent=2), encoding="utf-8")
     (out_dir / "instrumented_processors.json").write_text(json.dumps(instrumented, indent=2), encoding="utf-8")
+    if args.audit_roi:
+        (out_dir / "audit_config.json").write_text(
+            json.dumps(
+                {
+                    "roi_name": "center_building",
+                    "roi": list(args.audit_roi),
+                    "outer_ring_px": args.audit_outer_ring_px,
+                    "effective_rigid_mask": str(
+                        (project_root / args.rigid_masks).relative_to(project_root)
+                    ),
+                    "valid_eval_mask": str(
+                        (project_root / args.valid_eval_masks).relative_to(project_root)
+                    ),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
     index: list[dict[str, object]] = []
     for label, ratio in ratios:
@@ -215,6 +263,7 @@ def run_case(
         "spatial_gate_downsampling": "minimum_pool_preserve_thin_rigid",
         "control_source": str(control_path.relative_to(project_root)) if control_path else "generated_from_aligned_content",
         "gate_scope": "IP-Adapter image residual only",
+        "spatial_gate_only_resolution": args.only_resolution,
         "index": index,
     }
     (out_dir / "index.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -244,7 +293,12 @@ def main() -> None:
     parser.add_argument("--valid-eval-masks", default="data/derived/v2_0_geometry_risk/valid_masks/valid_eval")
     parser.add_argument("--log-residuals", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--audit-roi")
+    parser.add_argument("--audit-outer-ring-px", type=int, default=12)
+    parser.add_argument("--only-resolution", type=int, choices=(8, 16, 32, 64, 128, 256, 512))
     args = parser.parse_args()
+
+    args.audit_roi = parse_roi(args.audit_roi)
 
     config = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     fixed = config["fixed_parameters"]
