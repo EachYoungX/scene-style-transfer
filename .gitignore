@@ -1,39 +1,50 @@
-# Environments
+# Local environments and secrets
 sst_env/
-.env
 .venv/
+.env
+.env.*
+!.env.example
 
-# Data (large files, not tracked)
+# Local research material
+plan/
+internal_docs/
+archives/
+papers/
+
+# Large datasets and generated data
 data/raw/
 data/manifests/
 data/derived/
 data/previews/
-papers
-plan
-archives
-
-# Models (downloaded weights)
+runs/
 models/
 
-# Run outputs
-runs/
-
-# Python
+# Python build and cache files
 __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
 build/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 *.so
 .eggs/
 
-# IDE
+# Local logs and temporary files
+*.log
+*.tmp
+tmp/
+temp/
+
+# IDE and editor files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS
+# Operating-system files
 .DS_Store
 Thumbs.db

@@ -1,0 +1,34 @@
+experiment:
+  name: v2_1_regional_style_pilot
+  manifest: configs/experiment/v2_0_geometry_risk_cases.csv
+  output_root: runs/ip_adapter_plus_injection/v2_1_regional_pilot
+  normalized_mask_root: data/derived/v2_1_geometry_control/region_masks
+  schedule: A2_highres_only
+  image_size: 512
+
+formal_cases:
+  - v1_5_demuth_church
+  - v1_5_kulhanek_snow_winter
+
+sanity_cases:
+  - v1_5_demuth_wave
+
+pilot_seed: 42
+
+fixed_parameters:
+  num_inference_steps: 30
+  strength: 0.76
+  guidance_scale: 5.8
+  controlnet_scale: 0.72
+  ip_adapter_scale: 0.9
+
+region_masks:
+  source_suffixes:
+    subject: _S.png
+    background: _B.png
+  threshold: 128
+  pooling: maximum
+  apply_valid_eval: true
+  exclude_rigid: true
+  overlap_policy: subject_priority
+  neutral_policy: derived_excluded_only

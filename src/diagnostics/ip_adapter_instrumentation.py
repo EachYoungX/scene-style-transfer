@@ -51,6 +51,15 @@ class ResidualRecord:
     gated_rms_nonrigid: float | None = None
     nonrigid_rms_ratio: float | None = None
     rigid_related_missed_tokens: int | None = None
+    subject_token_count: int | None = None
+    background_token_count: int | None = None
+    raw_rms_subject: float | None = None
+    gated_rms_subject: float | None = None
+    subject_rms_ratio: float | None = None
+    raw_rms_background: float | None = None
+    gated_rms_background: float | None = None
+    background_rms_ratio: float | None = None
+    region_rms: dict[str, dict[str, float | int | None]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -88,12 +97,13 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         processor_name: str = "",
         residual_logger: ResidualLogger | None = None,
         enable_logging: bool = True,
-        spatial_gate: torch.Tensor | None = None,
+        spatial_gate: torch.Tensor | dict[tuple[int, int], torch.Tensor] | None = None,
         audit_rigid_mask: torch.Tensor | None = None,
         audit_roi: tuple[int, int, int, int] | None = None,
         audit_outer_ring_px: int = 12,
         spatial_gate_only_resolution: tuple[int, int] | None = None,
         spatial_gate_pooling: str = "minimum",
+        audit_region_masks: dict[str, torch.Tensor | dict[tuple[int, int], torch.Tensor]] | None = None,
     ) -> None:
         super().__init__(
             hidden_size=hidden_size,
@@ -112,6 +122,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         if spatial_gate_pooling not in {"minimum", "maximum"}:
             raise ValueError("spatial_gate_pooling must be 'minimum' or 'maximum'")
         self.spatial_gate_pooling = spatial_gate_pooling
+        self.audit_region_masks = audit_region_masks or {}
         self._last_gate_mean: float | None = None
         self._last_gate_suppressed_fraction: float | None = None
         self._last_gate_height: int | None = None
@@ -128,12 +139,13 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         processor_name: str = "",
         residual_logger: ResidualLogger | None = None,
         enable_logging: bool = True,
-        spatial_gate: torch.Tensor | None = None,
+        spatial_gate: torch.Tensor | dict[tuple[int, int], torch.Tensor] | None = None,
         audit_rigid_mask: torch.Tensor | None = None,
         audit_roi: tuple[int, int, int, int] | None = None,
         audit_outer_ring_px: int = 12,
         spatial_gate_only_resolution: tuple[int, int] | None = None,
         spatial_gate_pooling: str = "minimum",
+        audit_region_masks: dict[str, torch.Tensor | dict[tuple[int, int], torch.Tensor]] | None = None,
     ) -> "InstrumentedIPAdapterAttnProcessor2_0":
         instrumented = cls(
             hidden_size=processor.hidden_size,
@@ -149,6 +161,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             audit_outer_ring_px=audit_outer_ring_px,
             spatial_gate_only_resolution=spatial_gate_only_resolution,
             spatial_gate_pooling=spatial_gate_pooling,
+            audit_region_masks=audit_region_masks,
         )
         instrumented.load_state_dict(processor.state_dict())
         reference_param = next(processor.parameters(), None)
@@ -351,6 +364,7 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         self._last_rigid_tokens = None
         self._last_roi_tokens = None
         self._last_outer_tokens = None
+        self._last_region_tokens: dict[str, torch.Tensor] = {}
         if self.spatial_gate is None:
             return ip_delta
         if input_ndim == 3:
@@ -364,6 +378,12 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             raise ValueError("Rigid-only spatial gating requires image-shaped attention hidden states.")
 
         gate = self.spatial_gate
+        direct_gate = None
+        if isinstance(gate, dict):
+            direct_gate = gate.get((height, width))
+            if direct_gate is None:
+                raise ValueError(f"No direct spatial gate supplied for {(height, width)}")
+            gate = direct_gate
         if gate.ndim == 2:
             gate = gate.unsqueeze(0).unsqueeze(0)
         elif gate.ndim == 3:
@@ -374,7 +394,13 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
         # sampling can miss such a line completely on 64/32/16/8 token grids.
         # Minimum pooling preserves a lower retain ratio if any source pixel in
         # the corresponding token cell is rigid, without changing the saved GT.
-        if self.spatial_gate_only_resolution is not None and (height, width) != self.spatial_gate_only_resolution:
+        if direct_gate is not None:
+            gate = gate.to(device=ip_delta.device, dtype=ip_delta.dtype)
+            if gate.ndim == 2:
+                gate = gate.unsqueeze(0).unsqueeze(0)
+            elif gate.ndim == 3:
+                gate = gate.unsqueeze(0)
+        elif self.spatial_gate_only_resolution is not None and (height, width) != self.spatial_gate_only_resolution:
             gate = torch.ones((1, 1, height, width), device=ip_delta.device, dtype=ip_delta.dtype)
         else:
             source_gate = gate.to(device=ip_delta.device, dtype=ip_delta.dtype)
@@ -403,6 +429,10 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
                 ring[ry0:ry1, rx0:rx1] = 1.0
                 ring[max(0, y0):min(512, y1), max(0, x0):min(512, x1)] = 0.0
                 self._last_outer_tokens = self._mask_to_tokens(ring, height, width, ip_delta.device)
+            self._last_region_tokens = {
+                name: self._mask_to_tokens(mask, height, width, ip_delta.device)
+                for name, mask in self.audit_region_masks.items()
+            }
         if gate.shape[1] != ip_delta.shape[1]:
             raise ValueError(
                 f"Spatial gate token count {gate.shape[1]} does not match IP residual token count "
@@ -410,7 +440,18 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
             )
         return ip_delta * gate
 
-    def _mask_to_tokens(self, mask: torch.Tensor, height: int, width: int, device: torch.device) -> torch.Tensor:
+    def _mask_to_tokens(
+        self,
+        mask: torch.Tensor | dict[tuple[int, int], torch.Tensor],
+        height: int,
+        width: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if isinstance(mask, dict):
+            direct = mask.get((height, width))
+            if direct is None:
+                raise ValueError(f"No audit region mask supplied for {(height, width)}")
+            return direct.to(device=device).reshape(-1).bool()
         source = mask.to(dtype=torch.float32, device=device)
         if source.ndim == 2:
             source = source.unsqueeze(0).unsqueeze(0)
@@ -462,6 +503,20 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
                 nonrigid_tokens = ~self._last_rigid_tokens
             raw_rms_nonrigid = self._regional_rms(raw_float, nonrigid_tokens)
             gated_rms_nonrigid = self._regional_rms(gated_float, nonrigid_tokens)
+            raw_rms_subject = self._regional_rms(raw_float, self._last_region_tokens.get("subject"))
+            gated_rms_subject = self._regional_rms(gated_float, self._last_region_tokens.get("subject"))
+            raw_rms_background = self._regional_rms(raw_float, self._last_region_tokens.get("background"))
+            gated_rms_background = self._regional_rms(gated_float, self._last_region_tokens.get("background"))
+            region_rms = {}
+            for name, token_mask in self._last_region_tokens.items():
+                raw_region = self._regional_rms(raw_float, token_mask)
+                gated_region = self._regional_rms(gated_float, token_mask)
+                region_rms[name] = {
+                    "token_count": int(token_mask.sum().item()),
+                    "raw_ip_rms": raw_region,
+                    "gated_ip_rms": gated_region,
+                    "rms_ratio": self._ratio(gated_region, raw_region),
+                }
         self.residual_logger.log(
             ResidualRecord(
                 processor_name=self.processor_name,
@@ -501,6 +556,23 @@ class InstrumentedIPAdapterAttnProcessor2_0(IPAdapterAttnProcessor2_0):
                     if self._last_rigid_tokens is not None and self._last_gate_tokens is not None
                     else None
                 ),
+                subject_token_count=(
+                    int(self._last_region_tokens["subject"].sum().item())
+                    if "subject" in self._last_region_tokens
+                    else None
+                ),
+                background_token_count=(
+                    int(self._last_region_tokens["background"].sum().item())
+                    if "background" in self._last_region_tokens
+                    else None
+                ),
+                raw_rms_subject=raw_rms_subject,
+                gated_rms_subject=gated_rms_subject,
+                subject_rms_ratio=self._ratio(gated_rms_subject, raw_rms_subject),
+                raw_rms_background=raw_rms_background,
+                gated_rms_background=gated_rms_background,
+                background_rms_ratio=self._ratio(gated_rms_background, raw_rms_background),
+                region_rms=region_rms,
             )
         )
 
@@ -509,13 +581,14 @@ def instrument_ip_adapter_processors(
     pipe: Any,
     residual_logger: ResidualLogger | None = None,
     *,
-    spatial_gate: torch.Tensor | None = None,
+    spatial_gate: torch.Tensor | dict[tuple[int, int], torch.Tensor] | None = None,
     enable_logging: bool = True,
     audit_rigid_mask: torch.Tensor | None = None,
     audit_roi: tuple[int, int, int, int] | None = None,
     audit_outer_ring_px: int = 12,
     spatial_gate_only_resolution: tuple[int, int] | None = None,
     spatial_gate_pooling: str = "minimum",
+    audit_region_masks: dict[str, torch.Tensor | dict[tuple[int, int], torch.Tensor]] | None = None,
 ) -> list[str]:
     replaced: list[str] = []
     processors = dict(pipe.unet.attn_processors)
@@ -533,13 +606,14 @@ def instrument_ip_adapter_processors(
             audit_outer_ring_px=audit_outer_ring_px,
             spatial_gate_only_resolution=spatial_gate_only_resolution,
             spatial_gate_pooling=spatial_gate_pooling,
+            audit_region_masks=audit_region_masks,
         )
         replaced.append(name)
     pipe.unet.set_attn_processor(processors)
     return replaced
 
 
-def set_spatial_gate(pipe: Any, spatial_gate: torch.Tensor) -> None:
+def set_spatial_gate(pipe: Any, spatial_gate: torch.Tensor | dict[tuple[int, int], torch.Tensor]) -> None:
     """Update the gate for already instrumented IP-Adapter processors."""
     for processor in pipe.unet.attn_processors.values():
         if isinstance(processor, InstrumentedIPAdapterAttnProcessor2_0):

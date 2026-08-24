@@ -1,0 +1,4 @@
+pair,lambda_safe,first_visible_risk_interval,more_severe_takeover,right_censored,notes
+church,0.4,0.4->0.6,0.8 begins visible change; 1.0 tree-to-architecture distortion,false,first clearly visible non-ignorable abnormality defines lambda_safe
+snow,0.4,0.4->0.6,none observed,false,first clearly visible non-ignorable abnormality defines lambda_safe
+wave,>=1.0,not observed,not observed,true,tested only through lambda=1.0

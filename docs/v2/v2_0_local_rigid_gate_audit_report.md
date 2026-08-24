@@ -1,6 +1,6 @@
-# V2.0 Local Rigid Gate 审计报告
+# V2.0 局部刚性门控审计报告
 
-> Status: **CLOSED**
+> 状态：**已关闭**
 > 
 > Snow: **regional/coarse-support failure candidate**  
 > Church: **edge-local failure candidate**
@@ -64,7 +64,7 @@ runs/ip_adapter_plus_injection/v2_0_local_gate_audit/
 - filled-region ROI RGB diff mean vs Uniform：`24.4536`
 - edge-only 与 filled-region 的 ROI 平均差异：约 `6.8422`
 
-整体视觉轮廓没有出现足以支持“filled region 能锁定建筑几何”的变化，因此 edge-only 支持范围过窄不是主要解释。
+整体视觉轮廓没有出现足以支持“filled region 能锁定建筑几何”的变化，edge-only 支持范围过窄不足以解释该结果。
 
 证据目录：
 
@@ -107,6 +107,6 @@ runs/ip_adapter_plus_injection/v2_0_local_gate_resolution_probe/
 
 当前 snow 结果应归类为：
 
-> 局部 rigid residual gate 实现正确，且在 16×16 等实际 attention token 上确实生效；但该 IP-Adapter image-branch residual 对 snow 中心建筑最终几何的控制权不足，无法形成可靠的几何边界保护。
+> 局部 rigid residual gate 实现正确，且在 16×16 等实际 attention token 上确实生效；但该 IP-Adapter image-branch residual 对 snow 中心建筑最终几何的控制权不足，尚未形成可靠的几何边界保护。
 
-下一阶段不应继续排查当前 gate 的坐标或 token 映射，也不应把该结果描述为“rigid gate 未生效”。若继续研究几何保护，应转向更接近 denoising/noise-space 或结构分支的干预机制。
+下一阶段保留当前 gate 的实现和审计证据，坐标与 token 映射审计到此结束。后续几何保护实验转向 denoising/noise-space 或结构分支。
