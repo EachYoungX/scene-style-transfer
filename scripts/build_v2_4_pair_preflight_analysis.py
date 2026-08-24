@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 from pathlib import Path
 
@@ -14,7 +15,6 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SIZE = 512
-LAMBDAS = (0.2, 0.4, 0.6, 0.8, 1.0)
 V23_CASES = ROOT / "configs/experiment/v2_3_pair_response_profiles.csv"
 V15_CASES = ROOT / "configs/experiment/v1_5_cases.csv"
 V23_HUMAN = ROOT / "runs/ip_adapter_plus_injection/v2_3_pair_response_profiles/audits/representative_multiseed/human_sensitivity_annotations.csv"
@@ -37,7 +37,7 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fields = list(rows[0])
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -55,7 +55,7 @@ def percentile(values: np.ndarray, value: float) -> float:
     return float(np.percentile(values, value)) if values.size else 0.0
 
 
-def edge_features(image: np.ndarray) -> dict[str, float]:
+def edge_features(image: np.ndarray) -> dict[str, object]:
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(gray, 100, 200)
     line_density = 0.0
@@ -64,7 +64,7 @@ def edge_features(image: np.ndarray) -> dict[str, float]:
     detector = cv2.createLineSegmentDetector(cv2.LSD_REFINE_STD)
     lines = detector.detect(gray)[0]
     if lines is not None:
-        segments = lines[:, 0, :]
+        segments = np.asarray(lines, dtype=np.float32).reshape(-1, 4)
         dx = segments[:, 2] - segments[:, 0]
         dy = segments[:, 3] - segments[:, 1]
         lengths = np.sqrt(dx * dx + dy * dy).astype(np.float32)
@@ -82,6 +82,7 @@ def edge_features(image: np.ndarray) -> dict[str, float]:
         "lsd_length_p90": percentile(lengths, 90),
         "lsd_orientation_entropy": entropy,
         "lsd_orientation_max_share": float(probabilities.max()),
+        "_orientation_distribution": probabilities,
     }
 
 
@@ -129,8 +130,6 @@ def coarse_patch_features(content: np.ndarray, reference: np.ndarray) -> dict[st
     reference_desc /= np.maximum(np.linalg.norm(reference_desc, axis=1, keepdims=True), 1e-8)
     similarity = content_desc @ reference_desc.T
     forward = similarity.max(axis=1)
-    backward = similarity.max(axis=0)
-    mutual = np.array_equal(similarity.argmax(axis=1)[similarity.argmax(axis=1)], np.arange(similarity.shape[0]))
     forward_argmax = similarity.argmax(axis=1)
     backward_argmax = similarity.argmax(axis=0)
     mutual_fraction = float(np.mean([backward_argmax[target] == index for index, target in enumerate(forward_argmax)]))
@@ -139,6 +138,21 @@ def coarse_patch_features(content: np.ndarray, reference: np.ndarray) -> dict[st
         "rgb_patch_nearest_cosine_p10": percentile(forward, 10),
         "rgb_patch_mutual_nearest_fraction": mutual_fraction,
     }
+
+
+def js_divergence(left: np.ndarray, right: np.ndarray) -> float:
+    """Return the symmetric, bounded divergence between two distributions."""
+    left = np.asarray(left, dtype=np.float64)
+    right = np.asarray(right, dtype=np.float64)
+    left = left / max(float(left.sum()), 1e-12)
+    right = right / max(float(right.sum()), 1e-12)
+    midpoint = 0.5 * (left + right)
+
+    def kl_divergence(source: np.ndarray, target: np.ndarray) -> float:
+        mask = source > 0
+        return float(np.sum(source[mask] * np.log(source[mask] / np.maximum(target[mask], 1e-12))))
+
+    return 0.5 * kl_divergence(left, midpoint) + 0.5 * kl_divergence(right, midpoint)
 
 
 def pair_features(content_path: Path, reference_path: Path) -> dict[str, float]:
@@ -150,8 +164,12 @@ def pair_features(content_path: Path, reference_path: Path) -> dict[str, float]:
     reference_appearance = appearance_features(reference)
     output: dict[str, float] = {}
     for name, value in content_edges.items():
+        if name.startswith("_"):
+            continue
         output[f"content_{name}"] = value
     for name, value in reference_edges.items():
+        if name.startswith("_"):
+            continue
         output[f"reference_{name}"] = value
         output[f"reference_minus_content_{name}"] = value - content_edges[name]
         output[f"reference_div_content_{name}"] = value / max(content_edges[name], 1e-8)
@@ -165,6 +183,10 @@ def pair_features(content_path: Path, reference_path: Path) -> dict[str, float]:
             "log_laplacian_variance_ratio": math.log((reference_appearance["laplacian_variance"] + 1e-6) / (content_appearance["laplacian_variance"] + 1e-6)),
             "high_frequency_abs_difference": abs(content_appearance["high_frequency_ratio"] - reference_appearance["high_frequency_ratio"]),
             "color_histogram_distance": float(np.linalg.norm(content_appearance["hsv_histogram"] - reference_appearance["hsv_histogram"])),
+            "orientation_distribution_js": js_divergence(
+                content_edges["_orientation_distribution"],
+                reference_edges["_orientation_distribution"],
+            ),
             **coarse_patch_features(content, reference),
         }
     )
@@ -175,15 +197,48 @@ def median(values: list[float]) -> float | str:
     return float(np.median(values)) if values else ""
 
 
+def numeric(value: str | None) -> float | None:
+    if value is None or value.strip().upper() in {"", "NA", "N/A", "NONE"}:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
 def aggregate_human(rows: list[dict[str, str]]) -> dict[str, object]:
     seeds = sorted({row["seed"] for row in rows})
     valid_rows = [row for row in rows if row.get("style_valid", "").lower() == "true"]
-    baseline = [[float(row["baseline_takeover_0_3"]) for row in rows if row["seed"] == seed and row["baseline_takeover_0_3"].strip().isdigit()] for seed in seeds]
+    baseline = [
+        [
+            score
+            for row in rows
+            if row["seed"] == seed
+            and numeric(row.get("lambda")) == 0.2
+            for score in [numeric(row.get("baseline_takeover_0_3"))]
+            if score is not None
+        ]
+        for seed in seeds
+    ]
     style_by_seed: dict[str, dict[float, float]] = {}
     incremental_by_seed: dict[str, dict[float, float]] = {}
     for seed in seeds:
-        style_by_seed[seed] = {float(row["lambda"]): float(row["human_style_score_0_4"]) for row in valid_rows if row["seed"] == seed and row["human_style_score_0_4"] not in ("", "NA")}
-        incremental_by_seed[seed] = {float(row["lambda"]): float(row["incremental_takeover_0_3"]) for row in rows if row["seed"] == seed and row["incremental_takeover_0_3"].strip().isdigit()}
+        style_by_seed[seed] = {
+            lam: score
+            for row in valid_rows
+            if row["seed"] == seed
+            for lam in [numeric(row.get("lambda"))]
+            for score in [numeric(row.get("human_style_score_0_4"))]
+            if lam is not None and score is not None
+        }
+        incremental_by_seed[seed] = {
+            lam: score
+            for row in rows
+            if row["seed"] == seed
+            for lam in [numeric(row.get("lambda"))]
+            for score in [numeric(row.get("incremental_takeover_0_3"))]
+            if lam is not None and lam > 0.2 and score is not None
+        }
     style_at_02 = [values[0.2] for values in style_by_seed.values() if 0.2 in values]
     style_at_10 = [values[1.0] for values in style_by_seed.values() if 1.0 in values]
     style_gain = [values[1.0] - values[0.2] for values in style_by_seed.values() if 0.2 in values and 1.0 in values]
@@ -217,11 +272,25 @@ def profile_label(row: dict[str, object]) -> str:
     return "P2_low_response"
 
 
+def average_ranks(values: list[float]) -> np.ndarray:
+    order = np.argsort(values, kind="mergesort")
+    ranks = np.empty(len(values), dtype=float)
+    sorted_values = np.asarray(values)[order]
+    start = 0
+    while start < len(values):
+        end = start + 1
+        while end < len(values) and sorted_values[end] == sorted_values[start]:
+            end += 1
+        ranks[order[start:end]] = (start + end - 1) / 2.0
+        start = end
+    return ranks
+
+
 def spearman(x: list[float], y: list[float]) -> float | str:
     if len(x) < 3:
         return ""
-    xr = np.argsort(np.argsort(x)).astype(float)
-    yr = np.argsort(np.argsort(y)).astype(float)
+    xr = average_ranks(x)
+    yr = average_ranks(y)
     if np.std(xr) == 0 or np.std(yr) == 0:
         return ""
     return float(np.corrcoef(xr, yr)[0, 1])
@@ -232,6 +301,8 @@ def main() -> None:
     parser.add_argument("--output-dir", default="analysis")
     args = parser.parse_args()
     output_dir = ROOT / args.output_dir
+    if not V23_CASES.exists():
+        raise FileNotFoundError(f"V2.3 pair manifest 不存在：{V23_CASES}")
     v23_cases = read_csv(V23_CASES)
     v15_cases = read_csv(V15_CASES)
     cases = []
@@ -239,6 +310,8 @@ def main() -> None:
         if source["case_id"] in {"v1_5_demuth_church", "v1_5_kulhanek_snow_winter", "v1_5_demuth_wave"}:
             cases.append({"case_id": source["case_id"], "content_path": source["content"], "style_path": source["style"]})
     cases.extend({"case_id": row["canonical_case_id"], "content_path": row["content_path"], "style_path": row["style_path"]} for row in v23_cases)
+    if len(cases) != 13 or len({case["case_id"] for case in cases}) != 13:
+        raise ValueError(f"预期 13 个唯一 pair，实际得到 {len(cases)}：{cases}")
     human_rows = read_csv(V23_HUMAN) if V23_HUMAN.exists() else []
     single_seed_rows = read_csv(V23_HUMAN_SEED42) if V23_HUMAN_SEED42.exists() else []
     human_by_case: dict[str, list[dict[str, str]]] = {}
@@ -263,10 +336,15 @@ def main() -> None:
             "incremental_nonzero_interval_count": "",
             "late_escalation_frequency": "",
             "style_valid_rate": "",
-            "label_status": "missing_v2_3_human_table",
+            "label_status": "pending_v2_4_profile_label",
         }
         labels["profile_label"] = profile_label(labels)
-        feature = pair_features(ROOT / case["content_path"], ROOT / case["style_path"])
+        content_path = ROOT / case["content_path"]
+        reference_path = ROOT / case["style_path"]
+        missing = [str(path) for path in (content_path, reference_path) if not path.exists()]
+        if missing:
+            raise FileNotFoundError(f"{case_id} 的输入图不存在：{missing}")
+        feature = pair_features(content_path, reference_path)
         profile_rows.append({"case": case_id, **labels})
         feature_rows.append({"case": case_id, "content_path": case["content_path"], "reference_path": case["style_path"], "feature_source": "512px fit_square_crop; RGB patch fallback; CLIP/DINO unavailable locally", **feature})
     write_csv(output_dir / "v2_4_pair_profiles.csv", profile_rows)
@@ -280,8 +358,66 @@ def main() -> None:
             values = [(float(profile[label_field]), float(feature[feature_field])) for profile, feature in zip(profile_rows, feature_rows) if str(profile[label_field]).strip() and profile["label_status"] in {"complete", "seed42_only"}]
             correlations.append({"label": label_field, "feature": feature_field, "n": len(values), "spearman_rho": spearman([pair[1] for pair in values], [pair[0] for pair in values])})
     write_csv(output_dir / "v2_4_feature_correlations.csv", correlations)
+    scored_profiles = [row for row in profile_rows if row["label_status"] in {"complete", "seed42_only"}]
+    feature_by_case = {row["case"]: row for row in feature_rows}
+    checks = []
+
+    def add_group_check(name: str, members_a: list[dict[str, object]], members_b: list[dict[str, object]]) -> None:
+        for feature_field in feature_fields:
+            values_a = [float(feature_by_case[row["case"]][feature_field]) for row in members_a]
+            values_b = [float(feature_by_case[row["case"]][feature_field]) for row in members_b]
+            if not values_a or not values_b:
+                continue
+            median_a = float(np.median(values_a))
+            median_b = float(np.median(values_b))
+            checks.append({
+                "comparison": name,
+                "feature": feature_field,
+                "n_a": len(values_a),
+                "n_b": len(values_b),
+                "median_a": median_a,
+                "median_b": median_b,
+                "median_b_minus_a": median_b - median_a,
+            })
+
+    low_initial = [row for row in scored_profiles if float(row["baseline_takeover_median"]) == 0]
+    high_initial = [row for row in scored_profiles if float(row["baseline_takeover_median"]) >= 2]
+    add_group_check("baseline_takeover_0_vs_ge2", low_initial, high_initial)
+
+    demuth = [row for row in scored_profiles if row["case"] in {
+        "clean_demuth_G1_water_lake",
+        "clean_demuth_G1_forest",
+        "v1_5_demuth_church",
+        "clean_demuth_G4_city_mismatch",
+    }]
+    for feature_field in feature_fields:
+        values = [float(feature_by_case[row["case"]][feature_field]) for row in demuth]
+        if values:
+            checks.append({
+                "comparison": "demuth_content_subset_span",
+                "feature": feature_field,
+                "n_a": len(values),
+                "n_b": 0,
+                "median_a": float(np.median(values)),
+                "median_b": "",
+                "median_b_minus_a": float(max(values) - min(values)),
+            })
+
+    low_risk = [row for row in scored_profiles if float(row["baseline_takeover_median"]) <= 1]
+    high_style = [row for row in low_risk if float(row["style_gain_median"]) >= 2]
+    low_style = [row for row in low_risk if float(row["style_gain_median"]) <= 1]
+    add_group_check("low_risk_high_style_vs_low_style", low_style, high_style)
+    write_csv(output_dir / "v2_4_preflight_checks.csv", checks)
     (output_dir / "v2_4_feature_manifest.json").write_text(
-        '{\n  "image_generation": false,\n  "learned_features": "pending_local_checkpoint",\n  "pair_count": 13,\n  "scored_pair_count": %d\n}\n' % sum(row["label_status"] in {"complete", "seed42_only"} for row in profile_rows),
+        json.dumps({
+            "image_generation": False,
+            "learned_features": "pending_local_checkpoint",
+            "pair_count": len(cases),
+            "scored_pair_count": len(scored_profiles),
+            "feature_count": len(feature_fields),
+            "profile_label_count": len({row["profile_label"] for row in scored_profiles}),
+            "canonical_pairs_pending_human_labels": [row["case"] for row in profile_rows if row["label_status"] == "pending_v2_4_profile_label"],
+        }, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     print(output_dir)

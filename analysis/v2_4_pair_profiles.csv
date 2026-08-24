@@ -1,7 +1,7 @@
 case,seed_count,baseline_takeover_median,baseline_takeover_max,style_at_02_median,style_at_10_median,style_gain_median,incremental_takeover_max_median,incremental_nonzero_interval_count,late_escalation_frequency,style_valid_rate,label_status,profile_label
-v1_5_kulhanek_snow_winter,0,,,,,,,,,,missing_v2_3_human_table,pending
-v1_5_demuth_church,0,,,,,,,,,,missing_v2_3_human_table,pending
-v1_5_demuth_wave,0,,,,,,,,,,missing_v2_3_human_table,pending
+v1_5_kulhanek_snow_winter,0,,,,,,,,,,pending_v2_4_profile_label,pending
+v1_5_demuth_church,0,,,,,,,,,,pending_v2_4_profile_label,pending
+v1_5_demuth_wave,0,,,,,,,,,,pending_v2_4_profile_label,pending
 compat_G1_church,3,0.0,1.0,1.0,4.0,3.0,1.0,2.0,1.0,1.0,complete,P1_low_risk_high_response
 clean_kulhanek_G1_water_lake,1,0.0,0.0,0.0,2.0,2.0,0.0,0.0,0.0,1.0,seed42_only,P2_low_response
 clean_demuth_G1_water_lake,3,1.0,1.0,1.0,4.0,3.0,0.0,0.0,0.3333333333333333,1.0,complete,P3_moderate_susceptibility_high_response

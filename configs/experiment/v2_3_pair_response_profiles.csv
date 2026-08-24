@@ -1,0 +1,11 @@
+canonical_case_id,content_path,style_path
+compat_G1_church,data/raw/_photo_ref/photo_lecreusois_church.jpg,data/raw/van_gogh/van_gogh_church_auvers_1890.jpg
+clean_kulhanek_G1_water_lake,data/raw/_photo_ref/photo_water_lake_and_boat.jpg,data/raw/kulhanek/kulhanek_e18th_street_1956.jpg
+clean_demuth_G1_water_lake,data/raw/_photo_ref/photo_water_lake_and_boat.jpg,data/raw/demuth/demuth_lancaster_1921.jpg
+clean_peixotto_G1_water_lake,data/raw/_photo_ref/photo_water_lake_and_boat.jpg,data/raw/peixotto/peixotto_princeton_1897.jpg
+clean_kulhanek_G1_forest,data/raw/_photo_ref/photo_forest_trees.jpg,data/raw/kulhanek/kulhanek_e18th_street_1956.jpg
+clean_demuth_G1_forest,data/raw/_photo_ref/photo_forest_trees.jpg,data/raw/demuth/demuth_lancaster_1921.jpg
+compat_G2_opposite_wave,data/raw/_photo_ref/photo_sea_wave.jpg,data/raw/hokusai/hokusai_great_wave_1831.jpg
+compat_G4_sea_cliff_wave,data/raw/_photo_ref/photo_sea_coast.jpg,data/raw/hokusai/hokusai_great_wave_1831.jpg
+compat_G4_city_mismatch,data/raw/_photo_ref/photo_seregei_street.jpg,data/raw/monet/monet_boulevard_capucines_1873.jpg
+clean_demuth_G4_city_mismatch,data/raw/_photo_ref/photo_seregei_street.jpg,data/raw/demuth/demuth_lancaster_1921.jpg
