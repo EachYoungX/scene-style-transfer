@@ -103,13 +103,19 @@ def aligned_content_path(project_root: Path, case: dict[str, str]) -> Path:
         "v1_5_demuth_wave": "photo_wave.png",
         "v1_5_kulhanek_snow_winter": "photo_snow_winter.png",
     }
-    aligned = project_root / "data/derived/v2_0_geometry_risk/annotation_sources/content" / names[case["canonical_case_id"]]
+    aligned_name = names.get(case["canonical_case_id"])
+    if aligned_name is None:
+        return project_root / case["content_path"]
+    aligned = project_root / "data/derived/v2_0_geometry_risk/annotation_sources/content" / aligned_name
     raw = project_root / case["content_path"]
     return raw if raw.exists() else aligned
 
 
 def frozen_control_path(project_root: Path, case: dict[str, str]) -> Path | None:
-    path = project_root / Path(case["output_path"]).parent / "canny.png"
+    output_path = case.get("output_path", "").strip()
+    if not output_path:
+        return None
+    path = project_root / Path(output_path).parent / "canny.png"
     return path if path.exists() else None
 
 

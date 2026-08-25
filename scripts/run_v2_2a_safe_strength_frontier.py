@@ -145,7 +145,7 @@ def run_case(project_root: Path, case: dict[str, str], config: dict, args: argpa
             json.dumps(
                 {
                     "case": case,
-                    "seed": seed,
+                    "seed": args.seed,
                     "lambda": multiplier,
                     "schedule": schedule,
                     "elapsed_sec": round(elapsed, 4),

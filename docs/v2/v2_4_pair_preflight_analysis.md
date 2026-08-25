@@ -1,6 +1,6 @@
 # V2.4 生成前 Pair Preflight 分析
 
-> 状态：进行中。第一轮完成生成前特征提取和 pair profile 对照，暂不生成新图。
+> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b 已完成 10 个 controlled-cross pair 的 seed42 screening，等待人工评分。
 
 ## 1. 研究目标
 
@@ -43,7 +43,7 @@ profile_label
 - Laplacian 与高频能量差异；
 - 16×16 粗尺度 RGB patch 最近邻相似度和 mutual-nearest fraction。
 
-本地当前未配置 CLIP 或 DINOv2 权重。粗尺度 patch 项使用 RGB/灰度统计作为可重复的基础特征；CLIP global cosine、DINOv2 global similarity 和 DINO patch similarity 列为后续扩展项。
+粗尺度 patch 项使用 RGB/灰度统计作为可重复的基础特征；representation 扩展使用本地 IP-Adapter CLIP vision checkpoint 与 `facebook/dinov2-small`。
 
 ## 4. 第一轮结果
 
@@ -75,12 +75,18 @@ profile_label
 
 ## 6. V2.4b targeted profile balancing
 
-已准备 10 个 generation-free preflight 后再生成的 controlled-cross 候选，配置位于 `configs/experiment/v2_4b_targeted_profile_candidates.csv`。这些候选尚未生成，也尚未进行人工评分；目标是补齐 P1/P2，而不是继续扩大 P4。
+已完成 10 个 generation-free preflight 后的 controlled-cross 候选，配置位于 `configs/experiment/v2_4b_targeted_profile_candidates.csv`。每个候选使用 seed42、λ=.2/.4/.6/.8/1.0、无 mask，共 50 张输出。审阅材料位于：
+
+- `runs/ip_adapter_plus_injection/v2_4b_targeted_profile_candidates/reviews/all_cases_targeted_seed42.png`；
+- `runs/ip_adapter_plus_injection/v2_4b_targeted_profile_candidates/reviews/cases/`；
+- `runs/ip_adapter_plus_injection/v2_4b_targeted_profile_candidates/audits/human_sensitivity_annotations.csv`。
+
+目标是补齐 P1/P2，而不是继续扩大 P4。
 
 ## 7. 当前行动项
 
 1. 复核 3 个 canonical pair 的新 profile 是否与人工总体判断一致；
 2. 复核 DINO/CLIP 特征在 Demuth fixed-reference subset 中的逐 pair 排序；
-3. 从 10 个候选中选择并生成 seed42 screening，完成同一套人工评分；
+3. 对 10 个候选完成 50 行人工评分；
 4. 保持 content/reference 留出检查，不进行 random pair split；
 5. 特征规律稳定后再设计 `Reject / 0.2 / 0.6 / 1.0` 的简单 preflight 规则。
