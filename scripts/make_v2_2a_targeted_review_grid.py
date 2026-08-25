@@ -50,7 +50,8 @@ def make_case(case_id: str, stem: str, multipliers: tuple[float, ...]) -> Image.
             panels.append(panel(path, label))
     gutter = 8
     row_width = sum(item.width for item in panels[: 2 + len(multipliers)]) + gutter * (1 + len(multipliers))
-    canvas = Image.new("RGB", (row_width, 2 * panels[0].height + 12), (32, 32, 32))
+    canvas_height = len(SEEDS) * panels[0].height + (len(SEEDS) - 1) * 12
+    canvas = Image.new("RGB", (row_width, canvas_height), (32, 32, 32))
     row_size = 2 + len(multipliers)
     for index, item in enumerate(panels):
         row, column = divmod(index, row_size)
