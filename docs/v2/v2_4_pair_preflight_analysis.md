@@ -1,6 +1,6 @@
 # V2.4 生成前 Pair Preflight 分析
 
-> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b controlled pair expansion 已完成 23 pair 数据收集；V2.4c common-seed validation 与 V2.4d feasibility probe 已完成，尚未补新 pair 或新增 multiseed 推理。
+> 状态：V2.4 pair-preflight branch 已关闭。V2.4a hypothesis、V2.4b 23-pair expansion、V2.4c validation、V2.4d feasibility probe 和最终 global λ freeze 均已完成；pair-aware controller 不进入正式方法。
 
 ## 1. 研究目标
 
@@ -85,12 +85,9 @@ profile_label
 
 ## 7. 当前行动项
 
-1. 复核 3 个 canonical pair 的新 profile 是否与人工总体判断一致；
-2. 复核 DINO/CLIP 特征在 Demuth fixed-reference subset 中的逐 pair 排序；
-3. 已对 10 个候选完成 50 行人工评分；聚合结果位于 `analysis/v2_4b_human_profiles.csv`；
-4. 保持 content/reference 留出检查，不进行 random pair split；
-5. 从 P1、P2 和人工判定无效的 pair 中选择代表样本，先做 seed42/123/777 multiseed 复核；
-6. 特征规律经 multiseed 复核后再设计 `Reject / 0.2 / 0.6 / 1.0` 的简单 preflight 规则。
+1. V2.4 pair-preflight branch 保持关闭；
+2. 使用 `configs/experiment/v2_4_final_fixed_a2.yaml` 的固定 A2 operating point；
+3. 进入 external same-protocol benchmark，不再开展 pair-aware controller 探索。
 
 ## 8. V2.4b seed42 人工结果
 
@@ -123,3 +120,24 @@ Common-seed screening 继续支持三条方向：`content_canny_density` 与 ini
 - `analysis/v2_4d_feasibility_summary.csv`。
 
 结果仍是 exploratory only。style viability 和 conditional style responsiveness 的 family-holdout 表现接近 chance；pressure 的个别 split 可达到较高 balanced accuracy，但跨 group median 仍不稳定。当前证据支持继续收集受控 multiseed 复核，不支持直接训练正式 controller。
+
+## 11. V2.4e global operating-point freeze
+
+对 23 个 pair 的 seed42 common-screening 表统一比较 λ=.2/.4/.6/.8/1.0，结果位于：
+
+- `analysis/v2_4e_global_lambda_summary.csv`；
+- `analysis/v2_4e_global_lambda_decision.json`；
+- `configs/experiment/v2_4_final_fixed_a2.yaml`。
+
+冻结规则为：先排除 active takeover rate >25% 或 severe takeover rate >20% 的候选，再最大化 `style_valid AND style_score>=2` 的有效风格覆盖率，最后选择最小 λ。结果选择 `λ=0.6`：有效风格覆盖率为 56.5%，active takeover rate 为 21.7%，severe takeover rate 为 0%；λ=.8 和 1.0 的 active takeover rate 分别升至 30.4% 和 43.5%。
+
+因此最终内部 operating point 为：
+
+```yaml
+method: A2_fixed
+schedule: A2_highres_only
+reference_strength: 0.6
+case_adaptive_lambda: false
+```
+
+V2.4 的 generation-free features 保留为机制分析和 discussion evidence。`Pair-aware preflight prediction was not sufficiently robust under family-held-out evaluation.` 正式 benchmark 从固定 A2 operating point 进入外部同协议比较。

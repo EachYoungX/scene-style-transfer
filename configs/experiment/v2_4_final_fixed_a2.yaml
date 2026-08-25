@@ -1,0 +1,21 @@
+experiment:
+  name: v2_4_final_fixed_a2
+  base_config: configs/experiment/v2_1_regional_pilot.yaml
+  schedule: A2_highres_only
+  image_size: 512
+  reference_strength: 0.6
+
+operating_point_selection:
+  source: analysis/v2_4e_global_lambda_summary.csv
+  decision: analysis/v2_4e_global_lambda_decision.json
+  seed_scope: seed42_common_screening
+  active_takeover_rate_max: 0.25
+  severe_takeover_rate_max: 0.20
+  rule: maximize_effective_style_coverage_then_choose_smallest_lambda
+  effective_style_coverage: style_valid_and_style_score_ge_2
+  case_adaptive_lambda: false
+
+method_status:
+  pair_aware_controller: closed
+  generation_free_preflight: descriptive_mechanism_analysis_only
+  final_internal_method: A2_fixed
