@@ -59,12 +59,28 @@ profile_label
 
 这些数值只是 13 个已评分 pair 上的探索性排序，不是泛化性能。`analysis/v2_4_preflight_checks.csv` 另外记录了初始风险分组、Demuth controlled subset 和低风险风格响应分组；最后一组仍然样本严重不平衡。
 
+## 5. V2.4b representation features
+
+已在 `sst_env` 中使用本地 IP-Adapter CLIP vision checkpoint 和 `facebook/dinov2-small` 完成 13 个 pair 的 generation-free representation extraction。结果位于：
+
+- `analysis/v2_4_pair_feature_analysis.csv`：每行一个 pair，包含 profile、低级几何、RGB patch、CLIP 和 DINOv2 特征；
+- `analysis/v2_4_pair_feature_correlations.csv`：五个 target 的 Spearman 筛查；
+- `analysis/v2_4_feature_effects.csv`：`baseline=0` 对 `baseline>=2` 的组间 median 与 Cliff's delta；
+- `analysis/v2_4_demuth_controlled_subset.csv`：Demuth fixed-reference subset 的逐 pair 对齐表；
+- `analysis/v2_4b_feature_manifest.json`：模型、设备和特征清单。
+
+当前 13 pair 上，Content Canny density 对初始风险的方向最稳定；reference/content LSD ratio 对增量风险更突出；CLIP patch mutual correspondence 和 DINO patch similarity 对 Style gain 出现探索性信号。它们仍然不能直接用于 controller 训练。
+
 后续扩展 pair 时采用 content/reference 留出检查，测量 pair compatibility 的可迁移性。
 
-## 5. 当前行动项
+## 6. V2.4b targeted profile balancing
+
+已准备 10 个 generation-free preflight 后再生成的 controlled-cross 候选，配置位于 `configs/experiment/v2_4b_targeted_profile_candidates.csv`。这些候选尚未生成，也尚未进行人工评分；目标是补齐 P1/P2，而不是继续扩大 P4。
+
+## 7. 当前行动项
 
 1. 复核 3 个 canonical pair 的新 profile 是否与人工总体判断一致；
-2. 在新增 pair 前，复核 Demuth reference 的 controlled subset 排序是否具有语义解释；
-3. 新增 10–20 个 pair 验证初始风险与增量风险候选特征；
+2. 复核 DINO/CLIP 特征在 Demuth fixed-reference subset 中的逐 pair 排序；
+3. 从 10 个候选中选择并生成 seed42 screening，完成同一套人工评分；
 4. 保持 content/reference 留出检查，不进行 random pair split；
 5. 特征规律稳定后再设计 `Reject / 0.2 / 0.6 / 1.0` 的简单 preflight 规则。

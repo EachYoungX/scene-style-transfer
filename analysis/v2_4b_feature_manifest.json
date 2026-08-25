@@ -1,0 +1,27 @@
+{
+  "pair_count": 13,
+  "feature_count": 42,
+  "representation_features": [
+    "clip_global_cosine",
+    "clip_patch_mutual_nearest_fraction",
+    "clip_patch_nearest_mean",
+    "clip_patch_nearest_p10",
+    "dino_global_cosine",
+    "dino_patch_mutual_nearest_fraction",
+    "dino_patch_nearest_mean",
+    "dino_patch_nearest_p10"
+  ],
+  "target_fields": [
+    "baseline_takeover_median",
+    "style_gain_median",
+    "incremental_takeover_max_median",
+    "incremental_nonzero_interval_count",
+    "late_escalation_frequency"
+  ],
+  "model": {
+    "device": "cpu",
+    "clip_model": "/home/each/Workspace/Development/Projects/PythonProjects/scene-style-transfer/models/ip_adapter_plus/models/image_encoder",
+    "dino_model": "facebook/dinov2-small"
+  },
+  "generation": false
+}

@@ -198,8 +198,12 @@ def median(values: list[float]) -> float | str:
     return float(np.median(values)) if values else ""
 
 
-def numeric(value: str | None) -> float | None:
-    if value is None or value.strip().upper() in {"", "NA", "N/A", "NONE"}:
+def numeric(value: str | float | int | None) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (float, int)):
+        return float(value)
+    if value.strip().upper() in {"", "NA", "N/A", "NONE"}:
         return None
     try:
         return float(value)
