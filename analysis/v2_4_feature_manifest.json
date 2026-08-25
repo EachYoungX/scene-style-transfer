@@ -2,12 +2,8 @@
   "image_generation": false,
   "learned_features": "pending_local_checkpoint",
   "pair_count": 13,
-  "scored_pair_count": 10,
+  "scored_pair_count": 13,
   "feature_count": 34,
   "profile_label_count": 4,
-  "canonical_pairs_pending_human_labels": [
-    "v1_5_kulhanek_snow_winter",
-    "v1_5_demuth_church",
-    "v1_5_demuth_wave"
-  ]
+  "canonical_pairs_pending_human_labels": []
 }

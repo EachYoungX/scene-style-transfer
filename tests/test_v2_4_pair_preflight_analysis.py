@@ -3,7 +3,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from scripts.build_v2_4_pair_preflight_analysis import aggregate_human, average_ranks, profile_label
+from scripts.build_v2_4_pair_preflight_analysis import (
+    aggregate_human,
+    average_ranks,
+    normalize_legacy_v22_rows,
+    profile_label,
+)
 
 
 def test_average_ranks_uses_average_ties():
@@ -54,3 +59,33 @@ def test_aggregate_human_keeps_baseline_separate_from_incremental_scores():
     assert result["incremental_nonzero_interval_count"] == 1.0
     assert result["label_status"] == "complete"
     assert profile_label(result) == "P1_low_risk_high_response"
+
+
+def test_normalize_legacy_v22_rows_splits_baseline_and_incremental_takeover():
+    rows = [
+        {
+            "case": "pair",
+            "seed": "42",
+            "lambda": "0.2",
+            "human_style_score_0_4": "1",
+            "human_takeover_score_0_3": "2",
+            "human_reference_leakage_note": "",
+            "human_review_note": "",
+        },
+        {
+            "case": "pair",
+            "seed": "42",
+            "lambda": "0.4",
+            "human_style_score_0_4": "2",
+            "human_takeover_score_0_3": "1",
+            "human_reference_leakage_note": "",
+            "human_review_note": "",
+        },
+    ]
+
+    normalized = normalize_legacy_v22_rows(rows)
+
+    assert normalized[0]["baseline_takeover_0_3"] == "2"
+    assert normalized[0]["incremental_takeover_0_3"] == "NA"
+    assert normalized[1]["baseline_takeover_0_3"] == "NA"
+    assert normalized[1]["incremental_takeover_0_3"] == "1"

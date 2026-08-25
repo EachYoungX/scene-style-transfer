@@ -49,21 +49,21 @@ profile_label
 
 `analysis/v2_4_feature_correlations.csv` 使用 Spearman 检查生成前特征与 baseline susceptibility、style gain、incremental risk 的关系。当前样本量用于相关性筛查，classifier 放到样本扩充后。
 
-已完成 13 个 pair 的生成前特征提取，其中 10 个 pair 有 V2.3 人工标签，3 个 V2.2 canonical pair 的人工表仍为空，因此保留为 `pending_v2_4_profile_label`，不伪造 profile 标签。整个过程没有生成新图。
+已完成 13 个 pair 的生成前特征提取和 profile 聚合，其中 10 个 pair 的标签来自 V2.3，3 个 V2.2 canonical pair 的标签已从 targeted multiseed 人工表转换到 V2.4 schema。整个过程没有生成新图。
 
 当前筛查中较值得继续验证的方向是：
 
-- 初始风险：`rgb_patch_nearest_cosine_mean`、Content Canny density 与 baseline takeover 的 Spearman 绝对值最高；
+- 初始风险：Content Canny density 与 baseline takeover 的 Spearman 绝对值最高；
 - 增量风险：reference/content LSD line-density ratio 与 `incremental_takeover_max_median` 的相关性最高；
-- 风格响应：reference orientation entropy、Laplacian variance ratio 和 Lab mean distance 只有弱到中等相关，不能作为单独的风格兼容性判据。
+- 风格响应：当前 12 个有效 Style pair 上的几何长度和方向差异只有探索性相关，不能作为单独的风格兼容性判据。
 
-这些数值只是 10 个已评分 pair 上的探索性排序，不是泛化性能。`analysis/v2_4_preflight_checks.csv` 另外记录了初始风险分组、Demuth controlled subset 和低风险风格响应分组；最后一组目前只有 1 个低响应 pair 对 6 个高响应 pair，样本严重不平衡。
+这些数值只是 13 个已评分 pair 上的探索性排序，不是泛化性能。`analysis/v2_4_preflight_checks.csv` 另外记录了初始风险分组、Demuth controlled subset 和低风险风格响应分组；最后一组仍然样本严重不平衡。
 
 后续扩展 pair 时采用 content/reference 留出检查，测量 pair compatibility 的可迁移性。
 
 ## 5. 当前行动项
 
-1. 补齐 V2.2 三个 canonical pair 的人工数值表，或明确将其作为未标注的外部验证 pair；
+1. 复核 3 个 canonical pair 的新 profile 是否与人工总体判断一致；
 2. 在新增 pair 前，复核 Demuth reference 的 controlled subset 排序是否具有语义解释；
 3. 新增 10–20 个 pair 验证初始风险与增量风险候选特征；
 4. 保持 content/reference 留出检查，不进行 random pair split；

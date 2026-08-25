@@ -19,6 +19,7 @@ V23_CASES = ROOT / "configs/experiment/v2_3_pair_response_profiles.csv"
 V15_CASES = ROOT / "configs/experiment/v1_5_cases.csv"
 V23_HUMAN = ROOT / "runs/ip_adapter_plus_injection/v2_3_pair_response_profiles/audits/representative_multiseed/human_sensitivity_annotations.csv"
 V23_HUMAN_SEED42 = ROOT / "runs/ip_adapter_plus_injection/v2_3_pair_response_profiles/audits/human_sensitivity_annotations.csv"
+V22_CANONICAL_HUMAN = ROOT / "runs/ip_adapter_plus_injection/v2_2a_safe_strength_frontier/audits/targeted_multiseed/human_sensitivity_annotations.csv"
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -206,6 +207,30 @@ def numeric(value: str | None) -> float | None:
         return None
 
 
+def normalize_legacy_v22_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Convert the V2.2 canonical review schema to the V2.4 schema in memory."""
+    normalized = []
+    for row in rows:
+        lam = numeric(row.get("lambda"))
+        if lam is None:
+            continue
+        takeover = row.get("human_takeover_score_0_3", "")
+        normalized.append(
+            {
+                "case": row["case"],
+                "seed": row["seed"],
+                "lambda": row["lambda"],
+                "human_style_score_0_4": row.get("human_style_score_0_4", ""),
+                "baseline_takeover_0_3": takeover if lam == 0.2 else "NA",
+                "incremental_takeover_0_3": "NA" if lam == 0.2 else takeover,
+                "style_valid": "true",
+                "reference": row.get("human_reference_leakage_note", ""),
+                "review_note": row.get("human_review_note", ""),
+            }
+        )
+    return normalized
+
+
 def aggregate_human(rows: list[dict[str, str]]) -> dict[str, object]:
     seeds = sorted({row["seed"] for row in rows})
     valid_rows = [row for row in rows if row.get("style_valid", "").lower() == "true"]
@@ -321,6 +346,9 @@ def main() -> None:
     for row in single_seed_rows:
         if row["case"] not in multi_seed_cases:
             human_by_case.setdefault(row["case"], []).append(row)
+    legacy_rows = read_csv(V22_CANONICAL_HUMAN) if V22_CANONICAL_HUMAN.exists() else []
+    for row in normalize_legacy_v22_rows(legacy_rows):
+        human_by_case.setdefault(row["case"], []).append(row)
     profile_rows = []
     feature_rows = []
     for case in cases:
