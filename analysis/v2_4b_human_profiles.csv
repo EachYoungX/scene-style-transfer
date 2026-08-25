@@ -1,0 +1,11 @@
+case,content_family,reference_family,design_role,hypothesis,seed_count,baseline_takeover_median,baseline_takeover_max,style_at_02_median,style_at_10_median,style_gain_median,incremental_takeover_max_median,incremental_nonzero_interval_count,late_escalation_frequency,style_valid_rate,label_status,profile_label
+v2_4b_church_kulhanek,church,kulhanek,same_content_new_reference,screen_low_or_moderate_initial_risk_and_style_response,1,0.0,0.0,1.0,3.0,2.0,1.0,2.0,1.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_church_monet,church,monet,same_content_new_reference,screen_low_initial_risk_with_a_different_style_family,1,0.0,0.0,2.0,4.0,2.0,0.0,0.0,0.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_church_peixotto,church,peixotto,same_content_new_reference,screen_low_response_control,1,0.0,0.0,0.0,3.0,3.0,0.0,0.0,0.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_forest_hokusai,forest,hokusai,same_content_new_reference,screen_cross_semantic_geometry_mismatch,1,0.0,0.0,,,,0.0,0.0,0.0,0.0,seed42_only,P2_low_response
+v2_4b_forest_monet,forest,monet,same_content_new_reference,screen_low_initial_risk_and_style_response,1,0.0,0.0,,,,0.0,0.0,0.0,0.0,seed42_only,P2_low_response
+v2_4b_lake_hokusai,lake,hokusai,same_content_new_reference,screen_geometry_pressure_and_style_response,1,0.0,0.0,1.0,3.0,2.0,1.0,2.0,0.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_lake_monet,lake,monet,same_content_new_reference,screen_low_initial_risk_low_response_control,1,0.0,0.0,0.0,2.0,2.0,0.0,0.0,0.0,1.0,seed42_only,P2_low_response
+v2_4b_lake_van_gogh,lake,van_gogh,same_content_new_reference,screen_high_style_response_without_reusing_current_lake_references,1,0.0,0.0,2.0,4.0,2.0,0.0,0.0,0.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_wave_monet,wave,monet,same_content_new_reference,screen_low_initial_risk_low_response_control,1,0.0,0.0,1.0,3.0,2.0,1.0,2.0,1.0,1.0,seed42_only,P1_low_risk_high_response
+v2_4b_wave_van_gogh,wave,van_gogh,same_content_new_reference,screen_low_response_or_initial_mismatch,1,0.0,0.0,1.0,3.0,2.0,0.0,0.0,0.0,1.0,seed42_only,P1_low_risk_high_response

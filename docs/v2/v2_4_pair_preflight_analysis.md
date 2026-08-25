@@ -1,6 +1,6 @@
 # V2.4 生成前 Pair Preflight 分析
 
-> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b 已完成 10 个 controlled-cross pair 的 seed42 screening，等待人工评分。
+> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b 的 10 个 controlled-cross pair 已完成 seed42 screening 和人工评分，下一步为代表 pair 的 multiseed 复核。
 
 ## 1. 研究目标
 
@@ -87,6 +87,11 @@ profile_label
 
 1. 复核 3 个 canonical pair 的新 profile 是否与人工总体判断一致；
 2. 复核 DINO/CLIP 特征在 Demuth fixed-reference subset 中的逐 pair 排序；
-3. 对 10 个候选完成 50 行人工评分；
+3. 已对 10 个候选完成 50 行人工评分；聚合结果位于 `analysis/v2_4b_human_profiles.csv`；
 4. 保持 content/reference 留出检查，不进行 random pair split；
-5. 特征规律稳定后再设计 `Reject / 0.2 / 0.6 / 1.0` 的简单 preflight 规则。
+5. 从 P1、P2 和人工判定无效的 pair 中选择代表样本，先做 seed42/123/777 multiseed 复核；
+6. 特征规律经 multiseed 复核后再设计 `Reject / 0.2 / 0.6 / 1.0` 的简单 preflight 规则。
+
+## 8. V2.4b seed42 人工结果
+
+10 个 pair 的初步 profile 分布为：6 个 `P1_low_risk_high_response`，1 个有效的 `P2_low_response`，1 个无效风格响应的 `lake_monet` 控制 pair，以及 2 个整组 `style_valid=FALSE` 的 forest pair。所有 pair 的 λ=.2 baseline takeover 均为 0；增量 takeover 只在 `church_kulhanek`、`lake_hokusai`、`wave_monet` 出现，且均为低等级、有限区间信号。该结果用于代表性 multiseed 选择，仍属于 seed42 screening，不作为 controller 训练标签。
