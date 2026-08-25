@@ -1,6 +1,6 @@
 # V2.4 生成前 Pair Preflight 分析
 
-> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b 的 10 个 controlled-cross pair 已完成 seed42 screening 和人工评分，下一步为代表 pair 的 multiseed 复核。
+> 状态：V2.4a generation-free feature hypothesis 已通过探索性筛查；V2.4b controlled pair expansion 已完成 23 pair 数据收集；V2.4c common-seed validation 与 V2.4d feasibility probe 已完成，尚未补新 pair 或新增 multiseed 推理。
 
 ## 1. 研究目标
 
@@ -95,3 +95,31 @@ profile_label
 ## 8. V2.4b seed42 人工结果
 
 10 个 pair 的初步 profile 分布为：6 个 `P1_low_risk_high_response`，1 个有效的 `P2_low_response`，1 个无效风格响应的 `lake_monet` 控制 pair，以及 2 个整组 `style_valid=FALSE` 的 forest pair。所有 pair 的 λ=.2 baseline takeover 均为 0；增量 takeover 只在 `church_kulhanek`、`lake_hokusai`、`wave_monet` 出现，且均为低等级、有限区间信号。该结果用于代表性 multiseed 选择，仍属于 seed42 screening，不作为 controller 训练标签。
+
+## 9. V2.4c common-seed validation
+
+23 个 pair 已统一使用 seed42 标签和同一批 42 个 generation-free features，结果位于：
+
+- `analysis/v2_4c_common_seed_profiles.csv`；
+- `analysis/v2_4c_common_seed_correlations.csv`；
+- `analysis/v2_4c_common_seed_effects.csv`；
+- `analysis/v2_4c_common_seed_manifest.json`。
+
+`style_valid` 已作为独立 target。23 个 pair 中 20 个为有效风格迁移，3 个为无效：两个 Forest controlled pair，以及已有的 `compat_G4_city_mismatch`。无效 pair 的 `style_gain_if_valid` 保持 NA，不参与 conditional style responsiveness 相关性。
+
+Common-seed screening 继续支持三条方向：`content_canny_density` 与 initial susceptibility，CLIP patch mutual correspondence / DINO patch similarity 与 valid-pair style gain，reference/content LSD length ratio 与 pressure escalation。已有 3-seed 子集的方向确认位于：
+
+- `analysis/v2_4c_multiseed_profiles.csv`；
+- `analysis/v2_4c_multiseed_correlations.csv`；
+- `analysis/v2_4c_direction_comparison.csv`。
+
+这些结果用于方向确认，不把 23 个 seed42 profile 与 3-seed median 混合成单一训练表。多 seed 子集没有新的 `style_valid=FALSE` pair，因此 viability target 仍需后续专门验证。
+
+## 10. V2.4d minimal feasibility probe
+
+使用 1–3 个冻结特征、Logistic probe，以及 leave-one-content-family-out / leave-one-reference-family-out：
+
+- `analysis/v2_4d_feasibility_probe.csv`；
+- `analysis/v2_4d_feasibility_summary.csv`。
+
+结果仍是 exploratory only。style viability 和 conditional style responsiveness 的 family-holdout 表现接近 chance；pressure 的个别 split 可达到较高 balanced accuracy，但跨 group median 仍不稳定。当前证据支持继续收集受控 multiseed 复核，不支持直接训练正式 controller。

@@ -1,0 +1,8 @@
+target,split,n_evaluated,best_features,best_balanced_accuracy,median_balanced_accuracy,warning
+initial_susceptibility,leave_one_reference_family_out,9,content_canny_density,0.5,0.5,exploratory only; family holdout groups are tiny
+pressure_escalation,leave_one_content_family_out,12,reference_div_content_lsd_line_density,1.0,0.5,exploratory only; family holdout groups are tiny
+pressure_escalation,leave_one_reference_family_out,15,reference_div_content_lsd_line_density+reference_div_content_lsd_length_p90,1.0,0.6666666666666666,exploratory only; family holdout groups are tiny
+style_responsiveness,leave_one_content_family_out,6,clip_patch_mutual_nearest_fraction,0.5,0.41666666666666663,exploratory only; family holdout groups are tiny
+style_responsiveness,leave_one_reference_family_out,9,clip_patch_mutual_nearest_fraction,0.5,0.5,exploratory only; family holdout groups are tiny
+style_viability,leave_one_content_family_out,6,content_lsd_orientation_entropy,0.5,0.5,exploratory only; family holdout groups are tiny
+style_viability,leave_one_reference_family_out,6,content_lsd_orientation_entropy,0.5,0.5,exploratory only; family holdout groups are tiny
