@@ -18,7 +18,7 @@ environments:
       - external_benchmark/vendor/maskst/requirements.txt
       - external_benchmark/vendor/styleshot/requirements.txt
     purpose: Track_A_native_and_Track_B_SD1.5_smoke
-    status: ready_generation_smoke_passed
+    status: ready_smoke_formal_aborted_over_8gb
     compatibility_overrides:
       - numpy==1.26.4
       - transformers==4.44.2
@@ -61,3 +61,26 @@ environments:
     status: blocked_not_python_uv
     notes:
       - Official AdaIN is Torch7 and requires th; uv cannot replace that runtime.
+
+  - environment_id: efdm_project_uv
+    path: .venv
+    python: "3.10"
+    source_requirements:
+      - external_benchmark/vendor/efdm/ArbitraryStyleTransfer/requirements.txt
+    purpose: EFDM_low_cost_smoke
+    status: ready_formal_track_A
+    notes:
+      - The legacy pins are incompatible with the shared modern Torch stack, but the official inference modules import after reusing project_uv.
+      - The official EFDM decoder asset is present locally at the project root and was validated with the official test.py.
+      - The compatible VGG file is from the official AdaIN release because the EFDM README's VGG Drive link is currently unavailable.
+
+  - environment_id: zstar_project_uv
+    path: .venv
+    python: "3.10"
+    source_requirements:
+      - external_benchmark/vendor/zstar/requirements.txt
+    purpose: ZSTAR_bounded_smoke
+    status: blocked_final_smoke_oom_8gb
+    notes:
+      - The official repository targets Python 3.8.8, CUDA 11.4, and Diffusers 0.15.0; the current project environment can load the local SD1.5 pipeline for a bounded compatibility check.
+      - A clean-boot 512x512, 2-step, single-pair run reached synthesis but failed with CUDA out-of-memory; the process allocated about 14.1 GiB against an 8 GiB GPU.

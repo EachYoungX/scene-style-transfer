@@ -12,6 +12,21 @@ methods:
     tracks: [A_native_quality, C_practical_resource]
     status: blocked_torch7_runtime
 
+  - method_id: efdm
+    display_name: EFDM
+    category: traditional_baseline
+    repository_url: https://github.com/YBZh/EFDM
+    paper: CVPR2022_Oral
+    backbone: pretrained_non_diffusion
+    implementation_mode: feature_distribution_matching
+    stochastic: false
+    official_default: true
+    calibration: none
+    core: true
+    optional: false
+    tracks: [A_native_quality]
+    status: formal_track_A_passed
+
   - method_id: ipadapter_vanilla
     display_name: Vanilla IP-Adapter
     category: same_backbone_baseline
@@ -57,7 +72,7 @@ methods:
     core: true
     venue_claim: verify_before_manuscript_finalization
     tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
-    status: smoke_passed_native_over_8gb
+    status: blocked_formal_50step_abort_over_8gb
 
   - method_id: maskst
     display_name: Less is More / MaskST
@@ -137,7 +152,37 @@ methods:
     optional: true
     core: false
     tracks: [A_native_quality, C_practical_resource]
-    status: deferred_optional_vram
+    status: blocked_final_smoke_oom_8gb
+
+  - method_id: zstar
+    display_name: Z-STAR (Z*)
+    category: optional_external
+    repository_url: https://github.com/HolmesShuan/Zero-shot-Style-Transfer-via-Attention-Rearrangement
+    paper: CVPR2024
+    backbone: SD1.5
+    implementation_mode: attention_rearrangement_with_inversion
+    stochastic: false
+    official_default: true
+    calibration: none
+    core: false
+    optional: true
+    tracks: []
+    status: blocked_final_smoke_oom_8gb
+
+  - method_id: cast_vq
+    display_name: Content-Adaptive Style Transfer (CAST)
+    category: optional_external
+    repository_url: https://sunghoonim.github.io/publications.html
+    paper: ACCV2024
+    backbone: VAR_pretrained_VQ_autoencoder
+    implementation_mode: training_free_vq_autoencoder_style_transfer
+    stochastic: false
+    official_default: true
+    calibration: none
+    core: false
+    optional: true
+    tracks: []
+    status: blocked_no_official_code_or_checkpoint
 
   - method_id: stylekeeper
     display_name: StyleKeeper

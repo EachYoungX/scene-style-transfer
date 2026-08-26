@@ -1,5 +1,6 @@
 method_id,method_training_required,dedicated_training_corpus_required,single_reference_supported,test_time_optimization_required,inversion_required,semantic_auxiliary_models,expected_reference_count,per_pair_tuning_allowed,resource_status,notes
 adain,no,no,yes,no,no,none,1,no,blocked_torch7_runtime,"Torch7 runtime still required."
+efdm,no,no,yes,no,no,VGG19 feature encoder,1,no,formal_track_A_passed,"Deterministic traditional feature-statistics baseline; no test-time optimization or per-pair tuning."
 ipadapter_vanilla,no,no,yes,no,no,CLIP+ControlNet,1,no,pending_smoke,"Same-backbone SD1.5+Canny baseline."
 instantstyle,no,no,yes,no,no,CLIP+IP-Adapter,1,no,pending_reproduction,"Track A native; Track B SD1.5 is experimental."
 maskst,no,no,yes,no,no,StyleShot/IP-Adapter components,1,no,pending_reproduction,"Official image-driven route."
@@ -7,6 +8,7 @@ styleshot,yes,yes,yes,no,no,StyleShot style encoder+Contour,1,no,pending_reprodu
 cocodiff,no,no,yes,yes,yes,SD2.1 matcher+FFM,1,no,blocked_separate_legacy_environment,"Native pipeline is resource/optimization heavy."
 stylegallery,no,no,yes,yes,no,DINOv2+DepthAnything+(SAM optional),1,no,pending_4060_smoke_test,"Optional; official accelerated route still needs 4060 validation."
 puffnet,no,no,yes,no,no,VGG feature encoder,1,no,deferred_supplementary_weights_missing,"Supplementary only; official pretrained weights are missing."
-styleid,no,no,yes,no,no,CLIP/IP-Adapter components,1,no,deferred_optional_vram,"Supplementary only."
+styleid,no,no,yes,no,no,CLIP/IP-Adapter components,1,no,blocked_final_smoke_oom_8gb,"Final clean-boot bounded smoke failed at VAE encoding with CUDA OOM on the 8GB GPU."
+zstar,no,no,yes,yes,yes,SD1.5 inversion and attention rearrangement,1,no,blocked_final_smoke_oom_8gb,"Final clean-boot 512x512 smoke completed inversion but failed during synthesis with CUDA OOM."
 stylekeeper,no,unknown,unknown,unknown,unknown,unknown,unknown,no,deferred_official_stylekeeper_version_missing,"No complete official inference path in public repo."
 ours_a2_fixed,no,no,yes,no,no,CLIP+ControlNet,1,no,frozen,"A2 up-path with fixed global lambda=0.6."

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -68,13 +69,14 @@ def main() -> None:
 
     torch.cuda.reset_peak_memory_stats()
     start = time.perf_counter()
+    steps = int(os.environ.get("STYLESHOT_STEPS", "8"))
     output = styleshot.generate(
         style_image=style_512,
         prompt=[["an architectural basilica scene with preserved facade layout and spatial composition"]],
         content_image=contour_image,
         seed=42,
         num_samples=1,
-        num_inference_steps=8,
+        num_inference_steps=steps,
         guidance_scale=7.5,
     )[0][0]
     runtime = time.perf_counter() - start
@@ -86,7 +88,7 @@ def main() -> None:
                 "runtime_sec": round(runtime, 4),
                 "peak_vram_mb": round(torch.cuda.max_memory_allocated() / 1024**2, 2),
                 "device": torch.cuda.get_device_name(0),
-                "steps": 8,
+                "steps": steps,
                 "seed": 42,
                 "preprocessor": "Contour",
             },

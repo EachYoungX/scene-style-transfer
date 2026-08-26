@@ -20,6 +20,7 @@ tracks:
     question: Which method gives the strongest result under its reasonable official configuration?
     method_ids:
       - adain
+      - efdm
       - ipadapter_vanilla
       - instantstyle
       - maskst

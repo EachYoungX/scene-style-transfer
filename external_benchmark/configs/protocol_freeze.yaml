@@ -10,6 +10,7 @@ benchmark:
   complexity_manifest: external_benchmark/manifests/method_complexity.csv
   core_methods:
     - adain
+    - efdm
     - ipadapter_vanilla
     - instantstyle
     - maskst
