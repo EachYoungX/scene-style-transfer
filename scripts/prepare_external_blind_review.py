@@ -20,15 +20,15 @@ REVIEW_FIELDS = [
     "content_image",
     "reference_image",
     "output_image",
-    "content_preservation",
-    "style_fidelity",
-    "geometry_takeover",
-    "reference_semantic_leakage",
+    "content_preservation_0_4",
+    "style_fidelity_0_4",
+    "geometry_takeover_0_3",
+    "reference_semantic_leakage_0_3",
     "scene_regeneration",
     "new_reference_object",
     "false_hard_edge",
-    "style_valid",
-    "notes",
+    "invalid_output",
+    "review_note",
 ]
 MAPPING_FIELDS = ["blind_id", "track_id", "method", "pair_id", "seed", "output_path"]
 
@@ -71,15 +71,15 @@ def main() -> None:
                 "content_image": f"assets/{blind_id}/content.png",
                 "reference_image": f"assets/{blind_id}/reference.png",
                 "output_image": f"assets/{blind_id}/output.png",
-                "content_preservation": "",
-                "style_fidelity": "",
-                "geometry_takeover": "",
-                "reference_semantic_leakage": "",
+                "content_preservation_0_4": "",
+                "style_fidelity_0_4": "",
+                "geometry_takeover_0_3": "",
+                "reference_semantic_leakage_0_3": "",
                 "scene_regeneration": "",
                 "new_reference_object": "",
                 "false_hard_edge": "",
-                "style_valid": "",
-                "notes": "",
+                "invalid_output": "",
+                "review_note": "",
             }
         )
         mappings.append(
@@ -106,7 +106,9 @@ def main() -> None:
 
 Fill `review_template.csv` only. Do not add method names or inspect `analyst_mapping.csv` during scoring.
 
-Scores: `content_preservation` and `style_fidelity` use 0-4 (higher is better); `geometry_takeover`, `reference_semantic_leakage`, and `scene_regeneration` use 0-3 (lower is better). Binary fields use 0/1. Review each row independently with content, reference, and output visible.
+Use `BLIND_REVIEW_SCORING_GUIDE.md` for the detailed rubric. Score the four continuous fields carefully: `content_preservation_0_4` and `style_fidelity_0_4` are 0-4, higher is better; `geometry_takeover_0_3` and `reference_semantic_leakage_0_3` are 0-3, lower is better. Mark `scene_regeneration`, `new_reference_object`, `false_hard_edge`, and `invalid_output` quickly as 0/1 or T/F. Leave `review_note` blank unless the case is uncertain or needs detailed explanation. Review each row independently with content, reference, and output visible.
+
+For convenience, `contact_sheets/` contains the rows in `blind_id` order, 12 cases per sheet. Each case keeps the content, reference, and output panels together and shows only its blind ID. Use the individual files under `assets/` when a closer inspection is needed.
 """,
         encoding="utf-8",
     )
