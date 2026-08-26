@@ -1,0 +1,8 @@
+vendor/
+.venvs/
+outputs/
+logs/
+evaluation/automatic/
+evaluation/human_blind/
+evaluation/statistics/
+evaluation/figures/

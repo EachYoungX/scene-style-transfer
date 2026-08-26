@@ -1,0 +1,173 @@
+methods:
+  - method_id: adain
+    display_name: AdaIN
+    category: simple_baseline
+    adapter: external_benchmark.adapters.adain_adapter:AdaINAdapter
+    repository_url: https://github.com/xunhuang1995/AdaIN-style
+    backbone: pretrained_non_diffusion
+    stochastic: false
+    official_default: true
+    calibration: none
+    core: true
+    tracks: [A_native_quality, C_practical_resource]
+    status: blocked_torch7_runtime
+
+  - method_id: ipadapter_vanilla
+    display_name: Vanilla IP-Adapter
+    category: same_backbone_baseline
+    adapter: external_benchmark.adapters.ipadapter_baseline_adapter:VanillaIPAdapterAdapter
+    repository_url: https://github.com/tencent-ailab/IP-Adapter
+    backbone: SD1.5
+    content_control: Canny ControlNet
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: none
+    core: true
+    tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
+    status: pending_smoke_test
+
+  - method_id: instantstyle
+    display_name: InstantStyle
+    category: external
+    adapter: external_benchmark.adapters.instantstyle_adapter:InstantStyleAdapter
+    repository_url: https://github.com/instantX-research/InstantStyle
+    backbone: official_native_configuration
+    implementation_mode: image_based_stylization
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    core: true
+    tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
+    status: pending_reproduction
+
+  - method_id: styleshot
+    display_name: StyleShot
+    category: external
+    adapter: external_benchmark.adapters.styleshot_adapter:StyleShotAdapter
+    repository_url: https://github.com/open-mmlab/StyleShot
+    backbone: official_SD1.5
+    content_control: Contour
+    implementation_mode: image_driven
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    core: true
+    venue_claim: verify_before_manuscript_finalization
+    tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
+    status: pending_reproduction
+
+  - method_id: maskst
+    display_name: Less is More / MaskST
+    category: external
+    adapter: external_benchmark.adapters.maskst_adapter:MaskSTAdapter
+    repository_url: https://github.com/LinLLLL/MaskST
+    paper: ICLR2025_arXiv2502.07466
+    backbone: official_SD1.5_or_SDXL
+    implementation_mode: image_driven
+    content_control: official_image_driven_route
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    core: true
+    tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
+    status: pending_reproduction
+
+  - method_id: cocodiff
+    display_name: CoCoDiff
+    category: external
+    adapter: external_benchmark.adapters.cocodiff_adapter:CoCoDiffAdapter
+    repository_url: https://github.com/Wenbo-Nie/CoCoDiff
+    paper: ICLR2026_arXiv2602.14464
+    backbone: SD1_latent_with_SD2_1_matcher
+    implementation_mode: semantic_correspondence_and_injection
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    core: true
+    tracks: [A_native_quality, C_practical_resource]
+    status: blocked_separate_legacy_environment
+
+  - method_id: stylegallery
+    display_name: StyleGallery
+    category: optional_external
+    adapter: external_benchmark.adapters.stylegallery_adapter:StyleGalleryAdapter
+    repository_url: https://github.com/iiiiiiiword/StyleGallery
+    paper: CVPR2026_arXiv2603.10354
+    backbone: SD1.5
+    implementation_mode: training_free_semantic_regional_matching
+    required_components: SD1.5+DINOv2+DepthAnything
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    core: false
+    optional: true
+    tracks: [A_native_quality, C_practical_resource]
+    status: pending_4060_smoke_test
+
+  - method_id: puffnet
+    display_name: Puff-Net
+    category: optional_supplementary
+    adapter: external_benchmark.adapters.puffnet_adapter:PuffNetAdapter
+    repository_url: https://github.com/ZszYmy9/Puff-Net
+    backbone: pretrained_non_diffusion
+    stochastic: false
+    official_default: true
+    calibration: none
+    core: false
+    optional: true
+    tracks: [A_native_quality, C_practical_resource]
+    status: deferred_supplementary_weights_missing
+
+  - method_id: styleid
+    display_name: StyleID
+    category: optional_external
+    adapter: external_benchmark.adapters.styleid_adapter:StyleIDAdapter
+    repository_url: https://github.com/jiwoogit/StyleID
+    backbone: official_native_configuration
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: true
+    calibration: development_only_if_required
+    optional: true
+    core: false
+    tracks: [A_native_quality, C_practical_resource]
+    status: deferred_optional_vram
+
+  - method_id: stylekeeper
+    display_name: StyleKeeper
+    category: optional_external
+    adapter: external_benchmark.adapters.stylekeeper_adapter:StyleKeeperAdapter
+    repository_url: https://github.com/naver-ai/StyleKeeper
+    paper: ICCV2025
+    backbone: official_implementation_pending
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: false
+    calibration: none
+    core: false
+    optional: true
+    tracks: [C_practical_resource]
+    status: deferred_official_stylekeeper_version_missing
+
+  - method_id: ours_a2_fixed
+    display_name: Ours A2 fixed 0.6
+    category: ours
+    adapter: external_benchmark.adapters.ours_a2_fixed_adapter:OursA2FixedAdapter
+    repository_url: local_repository
+    backbone: SD1.5
+    content_control: Canny ControlNet
+    reference_injection_path: a2_up_path
+    global_reference_strength: 0.6
+    stochastic: true
+    seeds: [42, 123, 777]
+    official_default: false
+    calibration: frozen_on_development_set
+    core: true
+    tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
+    status: frozen

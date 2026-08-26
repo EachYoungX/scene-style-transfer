@@ -1,0 +1,20 @@
+{
+  "environment_id": "project_uv",
+  "environment_manager": "uv",
+  "uv_version": "uv 0.12.5 (x86_64-unknown-linux-gnu)",
+  "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "repository_commit": "dfd0e28f08b7d8cacb9aca15761b76d8b557c54a",
+  "repository_status": "M pyproject.toml\n?? external_benchmark/manifests/environment/project_uv.json\n?? uv.lock",
+  "packages": {
+    "torch": "2.5.1+cu124",
+    "diffusers": "0.35.2",
+    "transformers": "4.57.1",
+    "PIL": "12.2.0",
+    "cv2": "4.10.0"
+  },
+  "uv_lock_sha256": "cd31e52dfa70d14bc2540ccaebf9bb5c8991655b8c98df349bb03e7e0b0ec307",
+  "torch_cuda_version": "12.4",
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 4060"
+}

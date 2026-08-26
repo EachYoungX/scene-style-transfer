@@ -1,0 +1,109 @@
+benchmark:
+  benchmark_id: external_same_protocol_v1
+  status: setup_frozen
+  final_eval_pair_count: 24
+  development_manifest: configs/experiment/v2_4_final_fixed_a2.yaml
+  heldout_manifest: external_benchmark/configs/external_eval_pairs_v1.csv
+  prompt_manifest: external_benchmark/configs/prompts_v1.csv
+  track_manifest: external_benchmark/configs/tracks.yaml
+  resource_manifest: external_benchmark/manifests/resource_runs.csv
+  complexity_manifest: external_benchmark/manifests/method_complexity.csv
+  core_methods:
+    - adain
+    - ipadapter_vanilla
+    - instantstyle
+    - maskst
+    - styleshot
+    - cocodiff
+    - ours_a2_fixed
+  optional_methods:
+    - stylegallery
+    - puffnet
+    - styleid
+    - stylekeeper
+
+preprocessing:
+  crop_resize: fit_square_crop
+  input_resolution: 512
+  output_resolution: 512
+  color_space: RGB
+  final_output_format: PNG
+
+ours:
+  method_id: ours_a2_fixed
+  reference_injection_path: a2_up_path
+  global_reference_strength: 0.6
+  pair_adaptation: false
+  spatial_gate: false
+  purification: false
+  region_routing: false
+
+stochastic_seed_policy:
+  seeds: [42, 123, 777]
+  pair_is_independent_unit: true
+  continuous_aggregation: median
+  ordinal_aggregation: median
+  binary_failure_aggregation: frequency
+
+deterministic_methods:
+  run_once_per_pair: true
+
+parameter_freeze:
+  per_pair_tuning: false
+  development_only_global_calibration: true
+  max_candidate_values: 3
+  final_eval_recalibration: false
+
+human_review:
+  blinded: true
+  randomized_method_order: true
+  reviewer_count_minimum: 1
+  primary_evaluation: absolute_scores
+  score_fields:
+    content_preservation:
+      scale: 0-4
+      direction: higher_is_better
+    style_fidelity:
+      scale: 0-4
+      direction: higher_is_better
+    geometry_takeover:
+      scale: 0-3
+      direction: lower_is_better
+    reference_semantic_leakage:
+      scale: 0-3
+      direction: lower_is_better
+    scene_regeneration:
+      scale: 0-3
+      direction: lower_is_better
+  binary_flags:
+    - new_reference_object
+    - false_hard_edge
+    - style_valid
+  forbidden_primary_fields:
+    - baseline_takeover
+    - incremental_takeover
+
+automatic_metrics:
+  structure:
+    - canny_edge_f1
+    - edge_chamfer
+    - dino_content_similarity
+    - line_segment_consistency
+  style:
+    - artfid_or_components
+    - reference_color_similarity
+    - reference_contrast_similarity
+  failure_auxiliary:
+    - edge_degradation
+    - output_content_change
+
+output_layout:
+  root: external_benchmark
+  outputs: external_benchmark/outputs
+  run_manifest: external_benchmark/manifests/runs.csv
+  environment_manifest: external_benchmark/manifests/environment
+  checkpoint_manifest: external_benchmark/manifests/checkpoints.csv
+  automatic_evaluation: external_benchmark/evaluation/automatic
+  blind_review: external_benchmark/evaluation/human_blind
+  statistics: external_benchmark/evaluation/statistics
+  figures: external_benchmark/evaluation/figures

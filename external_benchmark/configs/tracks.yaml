@@ -1,0 +1,110 @@
+schema_version: external_tracks_v1
+
+common:
+  heldout_manifest: external_benchmark/configs/external_eval_pairs_v1.csv
+  prompt_manifest: external_benchmark/configs/prompts_v1.csv
+  single_reference: true
+  final_output_resolution: 512
+  human_review: absolute_scores_only
+  forbidden_primary_metrics:
+    - baseline_takeover
+    - incremental_takeover
+  global_calibration:
+    development_only: true
+    max_candidate_values: 3
+    per_pair_tuning: false
+
+tracks:
+  - track_id: A_native_quality
+    display_name: Native-quality benchmark
+    question: Which method gives the strongest result under its reasonable official configuration?
+    method_ids:
+      - adain
+      - ipadapter_vanilla
+      - instantstyle
+      - maskst
+      - styleshot
+      - cocodiff
+      - stylegallery
+      - ours_a2_fixed
+    execution:
+      backbone_policy: official_native
+      preserve_official_mechanism: true
+      fixed_hardware: false
+    notes:
+      - Keep each external method's official pipeline and content-conditioning route.
+      - StyleGallery remains optional until its 4060 smoke result is known.
+
+  - track_id: B_controlled_sd15
+    display_name: Controlled SD1.5 benchmark
+    question: Does restricted reference injection retain independent value under a close SD1.5 comparison?
+    method_ids:
+      - ipadapter_vanilla
+      - instantstyle
+      - maskst
+      - styleshot
+      - ours_a2_fixed
+    execution:
+      backbone_policy: SD1.5
+      final_output_resolution: 512
+      preserve_method_specific_content_route: true
+      fixed_hardware: false
+    method_configurations:
+      ipadapter_vanilla:
+        backbone: SD1.5
+        content_control: Canny ControlNet
+      instantstyle:
+        backbone: SD1.5
+        official_support_status: experimental
+      maskst:
+        backbone: SD1.5
+        official_image_driven_route: true
+      styleshot:
+        backbone: SD1.5
+        content_control: Contour
+      ours_a2_fixed:
+        backbone: SD1.5
+        content_control: Canny ControlNet
+        reference_injection_path: a2_up_path
+        global_reference_strength: 0.6
+    notes:
+      - Do not replace StyleShot Contour or MaskST's official route with Canny.
+      - The SD1.5 restriction concerns the backbone, not deletion of method-specific modules.
+
+  - track_id: C_practical_resource
+    display_name: Practical/resource benchmark
+    question: What quality and operational cost are required on an RTX 4060 Laptop 8GB?
+    method_ids:
+      - adain
+      - ipadapter_vanilla
+      - instantstyle
+      - maskst
+      - styleshot
+      - cocodiff
+      - stylegallery
+      - ours_a2_fixed
+    execution:
+      hardware: RTX 4060 Laptop 8GB
+      vram_limit_mb: 8192
+      batch_size: 1
+      input_resolution: 512
+      single_content: true
+      single_reference: true
+    required_measurements:
+      - execution_success
+      - successful_pairs_over_24
+      - peak_vram_mb
+      - wall_clock_latency_sec_per_image
+      - preprocessing_time_sec
+      - total_time_sec
+      - diffusion_or_optimization_steps
+      - inversion_required
+      - test_time_optimization_required
+      - method_specific_training_required
+      - dedicated_training_corpus_required
+      - auxiliary_learned_models
+      - reference_count
+      - per_pair_tuning
+    notes:
+      - Record OOM or unavailable-runtime status; do not remove core modules to force success.
+      - A method may have Track A quality results while failing the 8GB feasibility test.

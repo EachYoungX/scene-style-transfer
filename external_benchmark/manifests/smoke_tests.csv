@@ -1,0 +1,12 @@
+method_id,smoke_pair_ids,status,content_path,reference_path,output_path,official_commit,checkpoint,reason,notes
+adain,v2_4b_church_monet|compat_G4_city_mismatch,blocked,,,,6d8ac287f35010faf8feece4047bfe86c8c007d0,,torch7_runtime_missing,"Official implementation requires th/Torch7; no image generated."
+ipadapter_vanilla,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,,,adapter_smoke_pending,"Same SD1.5+Canny control as the frozen internal comparison."
+instantstyle,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,6b40588e263c958653353ec24eb7eb990cfa3da7,,checkpoint_and_runtime_pending,"Official repository audited; no image generated."
+maskst,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,2674b3c27a75ef632606b6799d0b211d445027fc,,pinned_environment_and_weights_pending,"Official image-driven route audited; no image generated."
+styleshot,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,f56e566517d222ae48fdcb82bbc75af72ae86f97,,checkpoint_and_runtime_pending,"Official SD1.5+Contour route audited; no image generated."
+cocodiff,v2_4b_church_monet|compat_G4_city_mismatch,blocked,,,,b9c0dc077fbff9ccce69589b913cb9f7d0c321a4,,separate_legacy_environment_pending,"Official repo requires legacy environment and checkpoints; no image generated."
+stylegallery,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,95f1b125158d9c5ef4f6ba5e9f17bcb11820d6dc,,4060_smoke_test_pending,"Official demo_accelerate path is 4090-tested; no image generated."
+ours_a2_fixed,v2_4b_church_monet|compat_G4_city_mismatch,pending,,,,,,adapter_smoke_pending,"Frozen A2 path and global lambda=0.6."
+puffnet,v2_4b_church_monet|compat_G4_city_mismatch,deferred,,,,a70b25257c274a0400a5e337d641a89d84dbe74,,supplementary_weights_missing,"Removed from core external methods."
+styleid,v2_4b_church_monet|compat_G4_city_mismatch,deferred,,,,,,optional_vram_smoke_deferred,"Not required for the core table."
+stylekeeper,v2_4b_church_monet|compat_G4_city_mismatch,deferred,,,,ac1219cc62b5f8030472adebd07981bcc939e938,,official_stylekeeper_version_missing,"Not required for the core table."
