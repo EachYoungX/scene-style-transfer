@@ -18,7 +18,7 @@ environments:
       - external_benchmark/vendor/maskst/requirements.txt
       - external_benchmark/vendor/styleshot/requirements.txt
     purpose: Track_A_native_and_Track_B_SD1.5_smoke
-    status: ready_import_smoke_passed
+    status: ready_generation_smoke_passed
     compatibility_overrides:
       - numpy==1.26.4
       - transformers==4.44.2
@@ -27,7 +27,8 @@ environments:
     notes:
       - These repositories share the Torch 2.0.1 / torchvision 0.15.2 / Diffusers 0.29.1 family.
       - NumPy 2.x breaks the pinned OpenCV wheel; Transformers latest disables Torch 2.0.1 support; the official adapter code imports sklearn.cluster.KMeans without listing scikit-learn.
-      - Resolve and record the final uv lock/install report before generation.
+      - LD_LIBRARY_PATH must include /usr/lib/wsl/lib under WSL for the Torch 2.0.1 CUDA 11.7 wheel.
+      - StyleShot Contour generation smoke passed; native official path exceeds the 8192 MB Track C limit.
 
   - environment_id: stylegallery_uv
     path: external_benchmark/.venvs/stylegallery_uv
@@ -35,10 +36,12 @@ environments:
     source_requirements:
       - external_benchmark/vendor/stylegallery/requirements.txt
     purpose: Track_A_native_and_Track_C_4060_smoke
-    status: not_created_until_smoke_start
+    status: ready_generation_smoke_passed
     notes:
       - Keep the official accelerated/offload route intact.
       - Record OOM as a valid Track C result instead of deleting modules.
+      - uv install used NumPy 1.26.4 because the vendor pins conflict with scikit-image 0.25.2; txt2panoimg is unavailable on the configured index and is not imported by the demo path.
+      - Official LCM accelerated smoke passed on RTX 4060 at reduced smoke settings; ViT-L depth, DINOv2, and SD1.5 loaded successfully.
 
   - environment_id: cocodiff_uv_legacy
     path: external_benchmark/.venvs/cocodiff_uv_legacy

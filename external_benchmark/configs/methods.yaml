@@ -40,7 +40,7 @@ methods:
     calibration: development_only_if_required
     core: true
     tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
-    status: pending_reproduction
+    status: smoke_passed_native
 
   - method_id: styleshot
     display_name: StyleShot
@@ -57,7 +57,7 @@ methods:
     core: true
     venue_claim: verify_before_manuscript_finalization
     tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
-    status: pending_reproduction
+    status: smoke_passed_native_over_8gb
 
   - method_id: maskst
     display_name: Less is More / MaskST
@@ -74,7 +74,7 @@ methods:
     calibration: development_only_if_required
     core: true
     tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
-    status: pending_reproduction
+    status: blocked_smoke_process_killed
 
   - method_id: cocodiff
     display_name: CoCoDiff
@@ -108,7 +108,7 @@ methods:
     core: false
     optional: true
     tracks: [A_native_quality, C_practical_resource]
-    status: pending_4060_smoke_test
+    status: smoke_passed_4060_lcm_reduced
 
   - method_id: puffnet
     display_name: Puff-Net
@@ -170,4 +170,4 @@ methods:
     calibration: frozen_on_development_set
     core: true
     tracks: [A_native_quality, B_controlled_sd15, C_practical_resource]
-    status: frozen
+    status: smoke_passed_native
